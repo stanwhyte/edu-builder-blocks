@@ -1,0 +1,150 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  Env:
+    Description: Env identifier for the objects being created
+    Default: ENV
+    Type: String
+  AvailabilityZone1:
+    Description: The first of two availability zones.
+    Type: AWS::EC2::AvailabilityZone::Name
+  AvailabilityZone2:
+    Description: The second of two availability zones.
+    Type: AWS::EC2::AvailabilityZone::Name
+  VpcCidrPrefix:
+    Description: The first two octets from a RFC1918 /16 address (i.e. 10.0 if 
+      targeting 10.0.0.0/16).
+    Type: String
+    MinLength: 3
+    MaxLength: 7
+    Default: 10.0
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})'
+    ConstraintDescription: Must be two octets only in the form x.x
+  VpcCidrSuffix:
+    Description: The suffix for the VPC CIDR (typically not changed)
+    Type: String
+    Default: 0.0/16
+  xAvailabilityZone1:
+    Description: The SSM parameter reference for the first availability zone
+    Type: String
+    Default: /WORKLOAD/1/EC2/AvailabilityZone/Name
+  xAvailabilityZone2:
+    Description: The SSM parameter reference for the second availability zone
+    Type: String
+    Default: /WORKLOAD/2/EC2/AvailabilityZone/Name
+  xVpc:
+    Description: The SSM parameter reference for the VPC identifier
+    Type: String
+    Default: /WORKLOAD/EC2/VPC/Id
+  xVpcCidrBlock:
+    Description: The SSM parameter reference for the VPC CIDR block
+    Type: String
+    Default: /WORKLOAD/EC2/VPC/CidrBlock
+  xVpcCidrPrefix:
+    Description: The SSM parameter reference for the VPC CIDR block prefix
+    Type: String
+    Default: /WORKLOAD/EC2/VPC/CidrBlockPrefix
+  xPrivateRouteTable:
+    Description: The SSM parameter reference for the private route 
+      table identifier
+    Type: String
+    Default: /WORKLOAD/Private/EC2/RouteTable/Id
+  xPublicRouteTable:
+    Description: The SSM parameter reference for the public route 
+      table identifier
+    Type: String
+    Default: /WORKLOAD/Public/EC2/RouteTable/Id
+Resources:
+  # Basic VPC parameters for the CIDR bocks and selected availability zones
+  ParamVpcCidrBlockPrefix:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The VPC CIDR block prefix (the first two octets only)
+      Name: !Sub '/${Env}${xVpcCidrPrefix}'
+      Value: !Ref VpcCidrPrefix
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamVpcCidrBlock:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The VPC CIDR block
+      Name: !Sub '/${Env}${xVpcCidrBlock}'
+      Value: !Sub '${VpcCidrPrefix}.${VpcCidrSuffix}'
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamAvailabilityZone1:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The first of two availability zones configured
+      Name: !Sub '/${Env}${xAvailabilityZone1}'
+      Value: !Ref AvailabilityZone1
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamAvailabilityZone2:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The second of two availability zones configured
+      Name: !Sub '/${Env}${xAvailabilityZone2}'
+      Value: !Ref AvailabilityZone2
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Sub '${VpcCidrPrefix}.${VpcCidrSuffix}'
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+  ParamVpc:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The VPC identifier
+      Name: !Sub '/${Env}${xVpc}'
+      Value: !Ref VPC
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties: {}
+  VPCGatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  PrivateRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+  ParamPrivateRouteTable:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The private route table identifier
+      Name: !Sub '/${Env}${xPrivateRouteTable}'
+      Value: !Ref PrivateRouteTable
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+  ParamPublicRouteTable:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The public route table identifier
+      Name: !Sub '/${Env}${xPublicRouteTable}'
+      Value: !Ref PublicRouteTable
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  PublicRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      GatewayId: !Ref InternetGateway
+      DestinationCidrBlock: 0.0.0.0/0
+    DependsOn:
+      - InternetGateway

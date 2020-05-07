@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  PreSharedKey:
+    Description: The pre-shared key associated with this customer gateway.
+    NoEcho: true
+    Type: String
+  Env:
+    Description: The environment associated with this network, i.e. DEV or PRD.
+    Type: String
+  CustomerGatewayAsn:
+    Description: The Asn for the Customer Gateway.
+    Type: String
+  CustomerGatewayIp:
+    Description: The IP address associated with the customer gateway.
+    Type: String
+  CustomerGatewayInsideCidr:
+    Description: A /30 CIDR in the 169.254.0.0/16 range (see docs).  
+    Type: String
+  xiTransitGatewayId:
+    Description: The cross stack reference for the transit gateway id
+    Default: :Foundation:EC2:TransitGateway:Id
+    Type: String
+Resources:
+  CustomerGw:
+    Type: AWS::EC2::CustomerGateway
+    Properties: 
+      BgpAsn: !Ref CustomerGatewayAsn
+      IpAddress: !Ref CustomerGatewayIp
+      Type: ipsec.1
+  CustomerVpnConnection:
+    Type: AWS::EC2::VPNConnection
+    Properties: 
+      CustomerGatewayId: !Ref CustomerGw
+      StaticRoutesOnly: false
+      TransitGatewayId: !ImportValue
+        Fn::Sub: '${Env}${xiTransitGatewayId}'
+      Type: ipsec.1
+      VpnTunnelOptionsSpecifications: 
+        - PreSharedKey: !Ref PreSharedKey
+          TunnelInsideCidr: !Ref CustomerGatewayInsideCidr

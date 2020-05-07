@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  Env:
+    Description: Env identifier for the objects being created
+    Type: String
+    Default: ENV
+  Vpc:
+    Description: The SSM parameter containing the id for the AWS VPC
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
+    Default: /ENV/Foundation/EC2/VPC/Id
+  NatGateway1:
+    Description: The SSM parameter reference for the first NAT gateway
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/Foundation/NAT/1/EC2/NatGateway/Id
+  NatGateway2:
+    Description: The SSM parameter reference for the second NAT gateway
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/Foundation/NAT/2/EC2/NatGateway/Id
+  xRouteTable1:
+    Description: The SSM parameter reference for the first route table
+    Default: /Foundation/NAT/1/EC2/RouteTable/Id
+    Type: String
+  xRouteTable2:
+    Description: The SSM parameter reference for the second route table
+    Default: /Foundation/NAT/2/EC2/RouteTable/Id
+    Type: String
+Resources:
+  NatRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+  NatRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+  NatRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref NatRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway1
+  NatRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref NatRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway2
+  ParamNatRouteTable1:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The id of the first NAT gateway route table
+      Name: !Sub '/${Env}${xRouteTable1}'
+      Value: !Ref NatRouteTable1
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamNatRouteTable2:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The id of the second NAT gateway route table
+      Name: !Sub '/${Env}${xRouteTable2}'
+      Value: !Ref NatRouteTable2
+      Type: String
+      Tags:
+        Environment: !Ref Env

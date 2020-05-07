@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  Env:
+    Description: Env identifier for the objects being created
+    Type: String
+    Default: ENV
+  Subnet1:
+    Description: The SSM parameter reference for the first public subnet
+    Default: /ENV/Foundation/Public/1/EC2/Subnet/Id
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+  Subnet2:
+    Description: The SSM parameter reference for the second public subnet
+    Default: /ENV/Foundation/Public/2/EC2/Subnet/Id
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+  xNatGateway1:
+    Description: The SSM parameter reference for the first nat gateway
+    Default: /WORKLOAD/1/EC2/NatGateway/Id
+    Type: String
+  xNatGateway2:
+    Description: The SSM parameter reference for the second nat gateway
+    Default: /WORKLOAD/2/EC2/NatGateway/Id
+    Type: String
+Resources:
+  EIPforNATGateway1:
+    Type: AWS::EC2::EIP
+    Properties:
+        Domain: vpc
+  EIPforNATGateway2:
+    Type: AWS::EC2::EIP
+    Properties:
+        Domain: vpc
+  NATGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+        - EIPforNATGateway1
+        - AllocationId
+      SubnetId: !Ref Subnet1
+  NATGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+        - EIPforNATGateway2
+        - AllocationId
+      SubnetId: !Ref Subnet2
+  ParamNatGateway1:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The id of the first NAT gateway 
+      Name: !Sub '/${Env}${xNatGateway1}'
+      Value: !Ref NATGateway1
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamNatGateway2:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The id of the second NAT gateway
+      Name: !Sub '/${Env}${xNatGateway2}'
+      Value: !Ref NATGateway2
+      Type: String
+      Tags:
+        Environment: !Ref Env

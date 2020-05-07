@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: This template is a simple wrapper around the refarch-shibboleth
+  project, specifically the NoVPC template.  It accepts some of the same
+  inputs as the primary project, and pulls the remainder of them from
+  the SSM parameter store.
+Parameters:
+  Env:
+    Type: String
+  CfnUrl:
+    Type: String
+  LaunchType:
+    Type: String
+  CodeCommitRepoName:
+    Type: String
+  SealerKeyVersionCount:
+    Type: String
+  ParentDomain:
+    Type: AWS::SSM::Parameter::Value<String>
+  FullyQualifiedDomainName:
+    Type: AWS::SSM::Parameter::Value<String>
+  CertificateARN:
+    Type: AWS::SSM::Parameter::Value<String>
+  LDAPUrl:
+    Type: String
+  LDAPBaseDN:
+    Type: String
+  LDAPReadOnlyUser:
+    Type: String
+  LDAPReadOnlyPassword:
+    Type: String
+    NoEcho: true
+  BucketName:
+    Type: AWS::SSM::Parameter::Value<String>
+  BucketKeyPrefix:
+    Type: AWS::SSM::Parameter::Value<String>
+  Vpc:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
+  PublicSubnet1ID:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+  PublicSubnet2ID:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+  PrivateSubnet1ID:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+  PrivateSubnet2ID:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+  DnsHostedZone:
+    Type: AWS::SSM::Parameter::Value<AWS::Route53::HostedZone::Id>
+  DnsName:
+    Type: AWS::SSM::Parameter::Value<String>
+Resources:
+  RA:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub ${CfnUrl}external/aws-refarch-shibboleth/aws-shibboleth-idp-novpc.yaml
+      Parameters:
+        LaunchType: !Ref LaunchType
+        TemplateBucket: !Ref BucketName
+        TemplateFolder: !Sub ${BucketKeyPrefix}external/aws-refarch-shibboleth/
+        CodeCommitRepoName: !Ref CodeCommitRepoName
+        SealerKeyVersionCount: !Ref SealerKeyVersionCount
+        ParentDomain: !Ref ParentDomain
+        FullyQualifiedDomainName: !Ref FullyQualifiedDomainName
+        CertificateARN: !Ref CertificateARN 
+        LDAPUrl: !Ref LDAPUrl
+        LDAPBaseDN: !Ref LDAPBaseDN
+        LDAPReadOnlyUser: !Ref LDAPReadOnlyUser
+        LDAPReadOnlyPassword: !Ref LDAPReadOnlyPassword
+        VPCID: !Ref Vpc
+        PublicSubnet1ID: !Ref PublicSubnet1ID
+        PublicSubnet2ID: !Ref PublicSubnet2ID
+        PrivateSubnet1ID: !Ref PrivateSubnet1ID
+        PrivateSubnet2ID: !Ref PrivateSubnet2ID
+
+  # Create a DNS record in the External hosted zone
+  DnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Type: A
+      HostedZoneId: !Ref DnsHostedZone
+      Name: !Ref DnsName
+      AliasTarget:
+        DNSName: !GetAtt RA.Outputs.LoadBalancerDNSName
+        HostedZoneId: !GetAtt RA.Outputs.LoadBalancerCanonicalHostedZoneID

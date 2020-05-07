@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  Env:
+    Description: The environment associated with this network, i.e. DEV or PRD.
+    Default: ENV
+    Type: String
+  TransitGatewayAsn:
+    Description: The Asn for the Transit Gateway.
+    Default: 64512
+    Type: String
+  Vpc:
+    Description: The SSM parameter containing the id for the AWS VPC
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
+    Default: /ENV/Foundation/EC2/VPC/Id
+  Subnet1:
+    Description: The SSM parameter reference for the first subnet
+    Default: /ENV/Foundation/TransitGateway/1/EC2/Subnet/Id
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+  Subnet2:
+    Description: The SSM parameter reference for the second subnet
+    Default: /ENV/Foundation/TransitGateway/2/EC2/Subnet/Id
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+  xTransitGatewayRouteTable:
+    Description: The SSM parameter reference for the TG route table
+    Default: /Foundation/EC2/TransitGatewayRouteTable/Id
+    Type: String
+  xTransitGateway:
+    Description: The SSM parameter reference for the transit gateway
+    Default: /Foundation/EC2/TransitGateway/Id
+    Type: String
+Resources:
+  # Establish a new transit gateway, with the default associations disabled
+  # as they don't work with CloudFormation anyway.
+  TransitGateway:
+    Type: AWS::EC2::TransitGateway
+    Properties: 
+      AmazonSideAsn: !Ref TransitGatewayAsn
+      DefaultRouteTableAssociation: disable
+      DefaultRouteTablePropagation: disable
+      DnsSupport: enable
+      VpnEcmpSupport: enable
+  # Associate the transit gateway with the VPC
+  TransitGatewayVPCAttachment:
+    Type: AWS::EC2::TransitGatewayAttachment
+    Properties: 
+      SubnetIds: 
+        - !Ref Subnet1
+        - !Ref Subnet2
+      TransitGatewayId: !Ref TransitGateway
+      VpcId: !Ref Vpc 
+  # Create a route table for the transit gateway
+  TransitGatewayRouteTable:
+    Type: AWS::EC2::TransitGatewayRouteTable
+    Properties: 
+      TransitGatewayId: !Ref TransitGateway
+  # Propogate the VPC routes to the transit gateway route table
+  RouteTablePropagation:
+    Type: AWS::EC2::TransitGatewayRouteTablePropagation
+    Properties: 
+      TransitGatewayAttachmentId: !Ref TransitGatewayVPCAttachment
+      TransitGatewayRouteTableId: !Ref TransitGatewayRouteTable
+  # Associate the transit gateway with the route table
+  TransitGatewayRouteTableAssociation:
+    Type: AWS::EC2::TransitGatewayRouteTableAssociation
+    Properties: 
+      TransitGatewayAttachmentId: !Ref TransitGatewayVPCAttachment
+      TransitGatewayRouteTableId: !Ref TransitGatewayRouteTable
+  # Create a default blackhole route to avoid circular routing problems
+  BlackHoleRoute:
+    Type: AWS::EC2::TransitGatewayRoute
+    Properties: 
+      Blackhole: true
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayRouteTableId: !Ref TransitGatewayRouteTable
+  ParamTransitGatewayRouteTable:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The transit gateway route table identifier
+      Name: !Sub '/${Env}${xTransitGatewayRouteTable}'
+      Value: !Ref TransitGatewayRouteTable
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamTransitGateway:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The transit gateway identifier
+      Name: !Sub '/${Env}${xTransitGateway}'
+      Value: !Ref TransitGateway
+      Type: String
+      Tags:
+        Environment: !Ref Env

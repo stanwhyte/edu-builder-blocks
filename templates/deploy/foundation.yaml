@@ -1,0 +1,371 @@
+AWSTemplateFormatVersion: 2010-09-09
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Environment Configuration
+        Parameters:
+          - Env
+          - CfnUrl
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - VpcCidrPrefix
+          - TransitGatewayAsn
+      - Label:
+          default: Dns Configuration
+        Parameters:
+          - DnsInternalZoneName
+          - DnsExternalZoneName
+    ParameterLabels:
+      Env:
+        default: Environment Name
+      CfnUrl:
+        default: CloudFormation S3 Url SSM Parameter
+      DnsInternalZoneName:
+        default: Internal Zone Name
+      DnsExternalZoneName:
+        default: External Zone Name
+Parameters:
+  Env:
+    Description: The environment associated with this network (i.e. DEV, PRD)
+    Type: String
+    Default: DEV
+    AllowedValues:
+      - DEV
+      - TST
+      - STG
+      - PRD
+  CfnUrl:
+    Description: The key for the SSM parameter containing the full url with 
+      of the S3 bucket with all of the CloudFormation templates and supporting
+      scripts and other components.
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /DEV/Bootstrap/CloudFormation/S3/Bucket/Url
+  VpcCidrPrefix:
+    Description: >-
+      The first two octets from a RFC1918 /16 address (i.e. 10.0 if targeting
+      10.0.0.0/16).
+    Type: String
+    MinLength: 3
+    MaxLength: 7
+    Default: 10.0
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})'
+    ConstraintDescription: Must be two octets only in the form x.x
+  TransitGatewayAsn:
+    Description: The Asn for the Transit Gateway.
+    Default: 64512
+    Type: String
+  DnsInternalZoneName:
+    Description: The root domain that customers will finally see in their 
+      browser.  Used to provision an internal Route53 hosted zone.
+    Type: String
+    Default: example.com
+  DnsExternalZoneName:
+    Description: An external (internet-facing) DNS name used to create a 
+      Route53 hosted zone for which AWS will be delegated responsibility.
+      If this domain is different from the internal zone name, the owner
+      of the internet facing DNS service will need to create CNAME entries
+      pointing from the *real* domain (i.e. foo.example.com) to the 
+      domain created here (i.e. foo.dev.aws.example.com).
+    Type: String
+    Default: dev.aws.example.com
+Mappings:
+  Templates:
+    Network:
+      Vpc: templates/network/vpc.yaml
+      Subnet: templates/network/subnet.yaml
+      NatGateway: templates/network/nat-gateway.yaml
+      NatGatewayRouting: templates/network/nat-gateway-routing.yaml
+      TransitGateway: templates/network/transit-gateway.yaml
+    Dns:
+      HostedZone: templates/dns/hosted-zone.yaml
+  Keys:
+    Bootstrap:
+      BucketName: /Bootstrap/CloudFormation/S3/Bucket/Name
+      BucketRegion: /Bootstrap/CloudFormation/S3/Bucket/Region
+      KeyPrefix: /Bootstrap/CloudFormation/S3/Bucket/KeyPrefix
+      BucketUrl: /Bootstrap/CloudFormation/S3/Bucket/Url
+      BucketArn: /Bootstrap/CloudFormation/S3/Bucket/Arn
+      BucketFullArn: /Bootstrap/CloudFormation/S3/Bucket/FullArn
+    Foundation:
+      AvailabilityZone1: /Foundation/1/EC2/AvailabilityZone/Name
+      AvailabilityZone2: /Foundation/2/EC2/AvailabilityZone/Name
+      ExternalHostedZone: /Foundation/External/Route53/HostedZone/Id
+      InternalHostedZone: /Foundation/Internal/Route53/HostedZone/Id
+      ExternalZoneName: /Foundation/External/Route53/HostedZone/Name
+      InternalZoneName: /Foundation/Internal/Route53/HostedZone/Name
+      Vpc: /Foundation/EC2/VPC/Id
+      VpcCidrBlock: /Foundation/EC2/VPC/CidrBlock
+      VpcCidrPrefix: /Foundation/EC2/VPC/CidrBlockPrefix
+      TransitGateway: /Foundation/EC2/TransitGateway/Id
+      NatGateway1: /Foundation/1/EC2/NatGateway/Id
+      NatGateway2: /Foundation/2/EC2/NatGateway/Id
+      PrivateRouteTable: /Foundation/Private/EC2/RouteTable/Id
+      PublicRouteTable: /Foundation/Public/EC2/RouteTable/Id
+      NatRouteTable1: /Foundation/NAT/1/EC2/RouteTable/Id
+      NatRouteTable2: /Foundation/NAT/2/EC2/RouteTable/Id
+      TGRouteTable: /Foundation/TransitGateway/EC2/RouteTable/Id
+      PrivateCidr1: /Foundation/Private/1/EC2/Subnet/CidrBlock
+      PrivateCidr2: /Foundation/Private/2/EC2/Subnet/CidrBlock
+      PublicCidr1: /Foundation/Public/1/EC2/Subnet/CidrBlock
+      PublicCidr2: /Foundation/Public/2/EC2/Subnet/CidrBlock
+      NatCidr1: /Foundation/NAT/1/EC2/Subnet/CidrBlock
+      NatCidr2: /Foundation/NAT/2/EC2/Subnet/CidrBlock
+      TransitGatewayCidr1: /Foundation/TransitGateway/1/EC2/Subnet/CidrBlock
+      TransitGatewayCidr2: /Foundation/TransitGateway/2/EC2/Subnet/CidrBlock
+      PrivateSubnet1: /Foundation/Private/1/EC2/Subnet/Id
+      PrivateSubnet2: /Foundation/Private/2/EC2/Subnet/Id
+      PublicSubnet1: /Foundation/Public/1/EC2/Subnet/Id
+      PublicSubnet2: /Foundation/Public/2/EC2/Subnet/Id
+      NatSubnet1: /Foundation/NAT/1/EC2/Subnet/Id
+      NatSubnet2: /Foundation/NAT/2/EC2/Subnet/Id
+      TransitGatewaySubnet1: /Foundation/TransitGateway/1/EC2/Subnet/Id
+      TransitGatewaySubnet2: /Foundation/TransitGateway/2/EC2/Subnet/Id
+Resources:
+  # Setup basic VPC and NAT gateway construct
+  Vpc:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Network,Vpc]
+      Parameters:
+        Env: !Ref Env
+        VpcCidrPrefix: !Ref VpcCidrPrefix
+        AvailabilityZone1: !Sub '${AWS::Region}a'
+        AvailabilityZone2: !Sub '${AWS::Region}b'
+        xAvailabilityZone1: !FindInMap [Keys,Foundation,AvailabilityZone1]
+        xAvailabilityZone2: !FindInMap [Keys,Foundation,AvailabilityZone2]
+        xVpc: !FindInMap [Keys,Foundation,Vpc]
+        xVpcCidrBlock: !FindInMap [Keys,Foundation,VpcCidrBlock]
+        xVpcCidrPrefix: !FindInMap [Keys,Foundation,VpcCidrPrefix]
+        xPrivateRouteTable: !FindInMap [Keys,Foundation,PrivateRouteTable]
+        xPublicRouteTable: !FindInMap [Keys,Foundation,PublicRouteTable]
+
+# Provision two NAT gateways, associated with the public subnet and the route
+# tables to allow routing through the nat gateways.
+  NatGateway:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Network,NatGateway]
+      Parameters:
+        Env: !Ref Env
+        Subnet1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,PublicSubnet1]
+        Subnet2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,PublicSubnet2]
+        xNatGateway1: !FindInMap [Keys,Foundation,NatGateway1]
+        xNatGateway2: !FindInMap [Keys,Foundation,NatGateway2]
+    DependsOn:
+      - PublicSubnet
+  NatGatewayRouteTable:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Network,NatGatewayRouting]
+      Parameters:
+        Env: !Ref Env
+        Vpc: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,Vpc]
+        NatGateway1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,NatGateway1]
+        NatGateway2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,NatGateway2]
+        xRouteTable1: !FindInMap [Keys,Foundation,NatRouteTable1]
+        xRouteTable2: !FindInMap [Keys,Foundation,NatRouteTable2]
+    DependsOn:
+      - NatGateway
+
+  # Setup some basic / default subnets
+  PublicSubnet:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Network,Subnet]
+      Parameters:
+        Env: !Ref Env
+        MapPublicIpOnLaunch: true
+        CidrPrefix: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,VpcCidrPrefix]
+        CidrSuffix1: 64.0/19
+        CidrSuffix2: 96.0/19
+        Vpc: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,Vpc]
+        AvailabilityZone1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone1]
+        AvailabilityZone2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone2]
+        RouteTable1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,PublicRouteTable]
+        RouteTable2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,PublicRouteTable]
+        xCidr1: !FindInMap [Keys,Foundation,PublicCidr1]
+        xCidr2: !FindInMap [Keys,Foundation,PublicCidr2]
+        xSubnet1: !FindInMap [Keys,Foundation,PublicSubnet1]
+        xSubnet2: !FindInMap [Keys,Foundation,PublicSubnet2]
+    DependsOn:
+      - Vpc
+  NatSubnet:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Network,Subnet]
+      Parameters:
+        Env: !Ref Env
+        CidrPrefix: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,VpcCidrPrefix]
+        CidrSuffix1: 128.0/19
+        CidrSuffix2: 160.0/19
+        Vpc: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,Vpc]
+        AvailabilityZone1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone1]
+        AvailabilityZone2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone2]
+        RouteTable1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,NatRouteTable1]
+        RouteTable2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,NatRouteTable2]
+        xCidr1: !FindInMap [Keys,Foundation,NatCidr1]
+        xCidr2: !FindInMap [Keys,Foundation,NatCidr2]
+        xSubnet1: !FindInMap [Keys,Foundation,NatSubnet1]
+        xSubnet2: !FindInMap [Keys,Foundation,NatSubnet2]
+    DependsOn:
+      - NatGatewayRouteTable
+  PrivateSubnet:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Network,Subnet]
+      Parameters:
+        Env: !Ref Env
+        CidrPrefix: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,VpcCidrPrefix]
+        CidrSuffix1: 192.0/19
+        CidrSuffix2: 224.0/19
+        Vpc: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,Vpc]
+        AvailabilityZone1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone1]
+        AvailabilityZone2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone2]
+        RouteTable1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,PrivateRouteTable]
+        RouteTable2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,PrivateRouteTable]
+        xCidr1: !FindInMap [Keys,Foundation,PrivateCidr1]
+        xCidr2: !FindInMap [Keys,Foundation,PrivateCidr2]
+        xSubnet1: !FindInMap [Keys,Foundation,PrivateSubnet1]
+        xSubnet2: !FindInMap [Keys,Foundation,PrivateSubnet2]
+    DependsOn:
+      - Vpc
+
+  # Establish a new dedicated subnet pair for the transit gateway routing
+  TransitGatewaySubnet:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Network,Subnet]
+      Parameters:
+        Env: !Ref Env
+        CidrPrefix: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,VpcCidrPrefix]
+        CidrSuffix1: 0.0/28
+        CidrSuffix2: 0.16/28
+        Vpc: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,Vpc]
+        AvailabilityZone1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone1]
+        AvailabilityZone2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone2]
+        RouteTable1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,PrivateRouteTable]
+        RouteTable2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,PrivateRouteTable]
+        xCidr1: !FindInMap [Keys,Foundation,TransitGatewayCidr1]
+        xCidr2: !FindInMap [Keys,Foundation,TransitGatewayCidr2]
+        xSubnet1: !FindInMap [Keys,Foundation,TransitGatewaySubnet1]
+        xSubnet2: !FindInMap [Keys,Foundation,TransitGatewaySubnet2]
+    DependsOn:
+      - Vpc
+
+  TransitGateway:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Network,TransitGateway]
+      Parameters:
+        Env: !Ref Env
+        TransitGatewayAsn: !Ref TransitGatewayAsn
+        Vpc: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,Vpc]
+        Subnet1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,TransitGatewaySubnet1]
+        Subnet2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,TransitGatewaySubnet2]
+        xTransitGatewayRouteTable: !FindInMap [Keys,Foundation,TGRouteTable]
+        xTransitGateway: !FindInMap [Keys,Foundation,TransitGateway]
+    DependsOn:
+      - TransitGatewaySubnet
+
+  # Setup the basic DNS hosted zone infrastructure
+  DnsHostedZone:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Dns,HostedZone]
+      Parameters:
+        Env: !Ref Env
+        ExternalZoneName: !Ref DnsExternalZoneName
+        InternalZoneName: !Ref DnsInternalZoneName
+        Vpc: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,Vpc]
+        xExternalHostedZone: !FindInMap [Keys,Foundation,ExternalHostedZone]
+        xInternalHostedZone: !FindInMap [Keys,Foundation,InternalHostedZone]
+        xExternalHostedZoneName: !FindInMap [Keys,Foundation,ExternalZoneName]
+        xInternalHostedZoneName: !FindInMap [Keys,Foundation,InternalZoneName]
+    DependsOn:
+      - Vpc

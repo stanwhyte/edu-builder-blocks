@@ -1,0 +1,240 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: >
+  This template utilizes AWS CodePipeline and AWS CodeBuild to build an
+  automated continuous deployment pipeline to Amazon Elastic Container Service
+  (Amazon ECS) using clusters powered by AWS Fargate or Amazon Elastic Compute
+  Cloud (Amazon EC2).  The container that is deployed is the Shibboleth IdP 
+  reference architecture.
+
+  An Application Load Balancer is also provisioned as a front end service
+  endpoint.  HTTPS is enabled and a certificate is provisioned to protect it.
+
+Parameters:
+  Env:
+    Description: The env associated with this network (i.e. DEV,PRD,etc.)
+    Type: String
+    Default: DEV
+    AllowedValues:
+      - DEV
+      - TST
+      - STG
+      - PRD
+
+  CfnUrl:
+    Description: The key for the SSM parameter containing the full url with
+      of the S3 bucket with all of the CloudFormation templates and supporting
+      scripts and other components.
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /DEV/Bootstrap/CloudFormation/S3/Bucket/Url
+
+  Subdomain:
+    Description: The subdomain to be associated with the core shibboleth sso
+      DNS name.  For example, if sso.example.com is the desired final domain, 
+      only the "sso" portion would be listed here.
+    Type: String
+    Default: sso-dev
+    AllowedPattern: '[a-z][a-z0-9\-]*?'
+    MinLength: 1
+    MaxLength: 100
+
+  LaunchType:
+    Type: String
+    Default: Fargate
+    AllowedValues:
+      - Fargate
+      - EC2
+    Description: >
+      The launch type for your service. Selecting EC2 will create an Auto
+      Scaling group of t2.micro instances for your cluster. See
+      https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html
+      to learn more about launch types.
+
+  CodeCommitRepoName:
+    Description: >
+      Name of the CodeCommit repository to create. Please verify Pattern and 
+      maxlength parameters.
+    Type: String
+    Default: shibboleth
+    MaxLength: 100
+    AllowedPattern: '(^[A-Za-z0-9_\.-]+)'
+    ConstraintDescription: >
+      Must conform with the permitted CodeCommit repository name pattern.
+
+  SealerKeyVersionCount:
+    Type: Number
+    Default: 10
+    Description: The number of versions of the sealear key to support
+
+  LDAPUrl:
+    Type: String
+    Default: ldaps://ldap-dev.example.com:636
+    Description: >
+      The URL of the LDAP server.
+
+  LDAPBaseDN:
+    Type: String
+    Default: DC=ad,DC=example,DC=com
+    Description: >
+      The base DN of the LDAP search base from which user lookup operations will
+      be performed.
+
+  LDAPReadOnlyUser:
+    Type: String
+    Default: readonlyuser@ad.example.com
+    Description: >
+      The username of a read-only user for connecting to the LDAP server.  This
+      user should have permissions to search for users and read the attributes
+      configured in Shibboleth.
+
+  LDAPReadOnlyPassword:
+    Type: String
+    NoEcho: true
+    Description: >
+      The password of a read-only user for connecting to the LDAP server.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterLabels:
+      LaunchType:
+        default: "Launch Type"
+      CodeCommitRepoName:
+        default: "CodeCommit Repository Name"
+      SealerKeyVersionCount:
+        default: "Sealer Key Version Count"
+      LDAPUrl:
+        default: "LDAP server URL"
+      LDAPBaseDN:
+        default: "LDAP base DN"
+      LDAPReadOnlyUser:
+        default: "LDAP user"
+      LDAPReadOnlyPassword:
+        default: "LDAP password"
+    ParameterGroups:
+      - Label:
+          default: Environment Configuration
+        Parameters:
+          - Env
+          - CfnUrl
+      - Label:
+          default: ECS Cluster Configuration
+        Parameters:
+          - LaunchType
+      - Label:
+          default: CodeCommit Configuration
+        Parameters:
+          - CodeCommitRepoName
+      - Label:
+          default: Shibboleth Configuration
+        Parameters:
+          - SealerKeyVersionCount
+          - Subdomain
+      - Label:
+          default: LDAP Settings
+        Parameters:
+          - LDAPUrl
+          - LDAPBaseDN
+          - LDAPReadOnlyUser
+          - LDAPReadOnlyPassword
+
+Mappings:
+  Templates:
+    Certificates:
+      Single: templates/certificates/single.yaml
+    Shibboleth:
+      Wrap: templates/shibboleth/wrap.yaml
+  Keys:
+    Bootstrap:
+      BucketName: /Bootstrap/CloudFormation/S3/Bucket/Name
+      BucketRegion: /Bootstrap/CloudFormation/S3/Bucket/Region
+      KeyPrefix: /Bootstrap/CloudFormation/S3/Bucket/KeyPrefix
+    Foundation:
+      ExternalHostedZone: /Foundation/External/Route53/HostedZone/Id
+      ExternalZoneName: /Foundation/External/Route53/HostedZone/Name
+      InternalZoneName: /Foundation/Internal/Route53/HostedZone/Name
+      Vpc: /Foundation/EC2/VPC/Id
+      NatSubnet1: /Foundation/NAT/1/EC2/Subnet/Id
+      NatSubnet2: /Foundation/NAT/2/EC2/Subnet/Id
+      PublicSubnet1: /Foundation/Public/1/EC2/Subnet/Id
+      PublicSubnet2: /Foundation/Public/2/EC2/Subnet/Id
+    Shibboleth:
+      SSOExternalName: /Shibboleth/SSO/External/Route53/RecordSet/Name
+      SSOInternalName: /Shibboleth/SSO/Internal/Route53/RecordSet/Name
+      SSOCertArn: /Shibboleth/SSO/CertificateManager/Certificate/Arn
+
+Resources:
+  # Create a certificate to protect the shibboleth subdomain
+  SSOCertificate:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Certificates,Single]
+      Parameters:
+        Env: !Ref Env
+        Subdomain: !Ref Subdomain
+        ExternalZoneName: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,ExternalZoneName]
+        InternalZoneName: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,InternalZoneName]
+        xExternalName: !FindInMap [Keys,Shibboleth,SSOExternalName]
+        xInternalName: !FindInMap [Keys,Shibboleth,SSOInternalName]
+        xCertificateArn: !FindInMap [Keys,Shibboleth,SSOCertArn]
+
+  # Deploy the actual Shibboleth workload
+  Wrap:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Shibboleth,Wrap]
+      Parameters:
+        Env: !Ref Env
+        CfnUrl: !Ref CfnUrl
+        LaunchType: !Ref LaunchType
+        CodeCommitRepoName: !Ref CodeCommitRepoName
+        SealerKeyVersionCount: !Ref SealerKeyVersionCount
+        LDAPUrl: !Ref LDAPUrl
+        LDAPBaseDN: !Ref LDAPBaseDN
+        LDAPReadOnlyUser: !Ref LDAPReadOnlyUser
+        LDAPReadOnlyPassword: !Ref LDAPReadOnlyPassword
+        BucketName: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Bootstrap,BucketName]
+        BucketKeyPrefix: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Bootstrap,KeyPrefix]
+        ParentDomain: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,InternalZoneName]
+        FullyQualifiedDomainName: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Shibboleth,SSOInternalName]
+        CertificateARN: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Shibboleth,SSOCertArn]
+        Vpc: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,Vpc]
+        PublicSubnet1ID: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,PublicSubnet1]
+        PublicSubnet2ID: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,PublicSubnet2]
+        PrivateSubnet1ID: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,NatSubnet1]
+        PrivateSubnet2ID: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,NatSubnet2]
+        DnsHostedZone: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,ExternalHostedZone]
+        DnsName: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Shibboleth,SSOExternalName]
+    DependsOn:
+      - SSOCertificate

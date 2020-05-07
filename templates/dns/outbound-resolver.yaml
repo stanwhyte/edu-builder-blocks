@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  Env:
+    Description: The environment associated with this network, i.e. DEV or PRD.
+    Type: String
+    Default: ENV
+  TargetDomain:
+    Description: The domain name to forward
+    Type: String
+    Default: ad.example.com
+  TargetIp1:
+    Description: The IP for the first target dns server
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/ActiveDirectory/DomainController/Remote/1/IpAddress
+  TargetIp2:
+    Description: The IP for the second target dns server
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/ActiveDirectory/DomainController/Remote/2/IpAddress
+  Vpc:
+    Description: The SSM parameter containing the id for the AWS VPC
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
+    Default: /ENV/Foundation/EC2/VPC/Id
+  EndpointSubnet1:
+    Description: The subnet that will house the first dns endpoint
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+    Default: /ENV/ActiveDirectory/1/EC2/Subnet/Id
+  EndpointSubnet2:
+    Description: The subnet that will house the second dns endpoint
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+    Default: /ENV/ActiveDirectory/2/EC2/Subnet/Id
+  EndpointIpPrefix:
+    Description: The SSM parameter containing the first two octets of the static
+      IP address issued to the endpoints.
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/Foundation/EC2/VPC/CidrBlockPrefix
+  EndpointIpSuffix1:
+    Description: The last two octets for the static IP assigned to the endpoint
+      provisionined into the first subnet.
+    Type: String
+    Default: 0.228
+  EndpointIpSuffix2:
+    Description: The last two octets for the static IP assigned to the endpoint
+      provisionined into the second subnet.
+    Type: String
+    Default: 0.244
+Resources:
+  OutboundResolverRule:
+    Type: AWS::Route53Resolver::ResolverRule
+    Properties: 
+      DomainName: !Ref TargetDomain
+      ResolverEndpointId: !Ref OutboundResolverEndpoint
+      RuleType: FORWARD
+      TargetIps: 
+        - Ip: !Ref TargetIp1 
+        - Ip: !Ref TargetIp2
+  AssociateRuleWithResolver:
+    Type: AWS::Route53Resolver::ResolverRuleAssociation
+    Properties: 
+      ResolverRuleId: !Ref OutboundResolverRule
+      VPCId: !Ref Vpc
+  OutboundResolverEndpoint:
+    Type: AWS::Route53Resolver::ResolverEndpoint
+    Properties: 
+      Direction: OUTBOUND
+      IpAddresses: 
+        - SubnetId: !Ref EndpointSubnet1
+          Ip: !Sub ${EndpointIpPrefix}.${EndpointIpSuffix1}
+        - SubnetId: !Ref EndpointSubnet2
+          Ip: !Sub ${EndpointIpPrefix}.${EndpointIpSuffix2}
+      SecurityGroupIds: 
+        - !Ref OutboundResolverSG
+  OutboundResolverSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group allowing dns outbound access 
+      VpcId: !Ref Vpc
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: !Sub '${TargetIp1}/32'
+        - IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: !Sub '${TargetIp1}/32'
+        - IpProtocol: tcp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: !Sub '${TargetIp2}/32'
+        - IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: !Sub '${TargetIp2}/32'

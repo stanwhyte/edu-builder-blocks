@@ -1,0 +1,669 @@
+AWSTemplateFormatVersion: 2010-09-09
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Environment Configuration
+        Parameters:
+          - Env
+          - CfnUrl
+      - Label:
+          default: Existing Active Directory Information
+        Parameters:
+          - DCRemoteIp1
+          - DCRemoteIp2
+          - Domain
+          - NetBIOS
+          - AdminUser
+          - AdminPassword
+      - Label:
+          default: AWS Configuration
+        Parameters:
+          - TargetLocation
+          - NetBIOSPrefix
+          - LdapSubdomain
+          - InstanceType
+          - KeyPairName
+          - WINFULLBASE
+    ParameterLabels:
+      InstanceType:
+        default: Instance Type for AWS Domain Controllers
+      WINFULLBASE:
+        default: Base Image for AWS Domain Controllers
+      LdapSubdomain:
+        default: Subdomain for LDAP Load Balancer
+      NetBIOSPrefix:
+        default: AWS Domain Controller NetBIOS Prefix
+      TargetLocation:
+        default: Target Location
+      AdminUser:
+        default: Domain Administrator User ID
+      AdminPassword:
+        default: Domain Administrator Password
+      NetBIOS:
+        default: Remote NetBIOS
+      Domain:
+        default: Remote Domain
+      DCRemoteIp1:
+        default: Remote Domain Controller IP 1
+      DCRemoteIp2:
+        default: Remote Domain Controller IP 2
+      Env:
+        default: Environment Name
+      CfnUrl:
+        default: CloudFormation S3 Url SSM Parameter
+Parameters:
+  Env:
+    Description: The env associated with this network (i.e. DEV,PRD,etc.)
+    Type: String
+    Default: DEV
+    AllowedValues:
+      - DEV
+      - TST
+      - STG
+      - PRD
+  CfnUrl:
+    Description: The key for the SSM parameter containing the full url with
+      of the S3 bucket with all of the CloudFormation templates and supporting
+      scripts and other components.
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /DEV/Bootstrap/CloudFormation/S3/Bucket/Url
+  TargetLocation:
+    Description: When set to Remote,will forward traffic to the remote / on-
+      premises domain controllers.  When set to AWS,will provision new domain 
+      controllers in AWS and join them to the customer Active Directory forest.
+      Generally,do testing with Remote to ensure connectivity works as desired.
+      Deploy new domain controllers with AWS only when ready to make things 
+      permanent as the AD entries for the new domain controllers aren't 
+      removed when the stack is deleted.
+    Type: String
+    Default: Remote
+    AllowedValues:
+      - Remote
+      - AWS
+  DCRemoteIp1:
+    Description: The IP address for the first remote AD domain controller
+    Type: String
+    Default: 192.168.0.10
+  DCRemoteIp2:
+    Description: The IP address for the second remote AD domain controller
+    Type: String
+    Default: 192.168.0.74
+  Domain:
+    Description: The domain name for the remote AD domain
+    Type: String
+    Default: ad.example.com
+  NetBIOS:
+    Description: The netbios name for the remote AD domain
+    Type: String
+    Default: example
+  AdminUser:
+    Description: A login user in the forest with domain admin privileges
+    Type: String
+    Default: DomainAdmin
+  AdminPassword:
+    Description: The password for the login user with domain admin privileges
+    Type: String
+    MaxLength: 32
+    MinLength: 8
+    NoEcho: true
+  LdapSubdomain:
+    Description: The subdomain to be used for the AD LDAP load balancer
+    Type: String
+    Default: ldap-dev
+  InstanceType:
+    AllowedValues:
+      - t2.large
+      - t3.large
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m5.large
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+    Default: m5.xlarge
+    Description: Amazon EC2 instance type for the Active Directory instance
+    Type: String
+  NetBIOSPrefix:
+    AllowedPattern: '[a-zA-Z0-9\-]+'
+    Default: AWSDC
+    Description: NetBIOS name prefix of the Active Directory server 
+      (up to 12 characters) - concatenated with the number of the server
+      to form the final NetBIOS name.
+    MaxLength: 12
+    MinLength: 1
+    Type: String
+  KeyPairName:
+    Description: Public/private keys allow you to securely connect to your 
+      instance after it launches
+    Type: AWS::EC2::KeyPair::KeyName
+  WINFULLBASE:
+    Type: String
+    Default:
+      /aws/service/ami-windows-latest/Windows_Server-2019-English-Full-Base
+Mappings: 
+  Templates: 
+    Certificates:
+      Single: templates/certificates/single.yaml
+    Network:
+      Subnet: templates/network/subnet.yaml
+      NatGatewayRouting: templates/network/nat-gateway-routing.yaml
+      TGNatRoute: templates/network/transit-gateway-nat-route.yaml
+      TGDefaultRoutes: templates/network/transit-gateway-default-routes.yaml
+      NetworkLoadBalancer: templates/network/network-load-balancer.yaml
+    Dns:
+      OutboundResolver: templates/dns/outbound-resolver.yaml
+    ActiveDirectory:
+      Init: templates/active-directory/init.yaml
+      DomainController: templates/active-directory/domain-controller.yaml
+      MemberCidr: templates/active-directory/domain-member-cidr.yaml
+      ScriptsFolder: templates/active-directory/scripts/
+  Keys: 
+    Bootstrap:
+      BucketFullArn: /Bootstrap/CloudFormation/S3/Bucket/FullArn
+    Foundation:
+      AvailabilityZone1: /Foundation/1/EC2/AvailabilityZone/Name
+      AvailabilityZone2: /Foundation/2/EC2/AvailabilityZone/Name
+      ExternalHostedZone: /Foundation/External/Route53/HostedZone/Id
+      InternalHostedZone: /Foundation/Internal/Route53/HostedZone/Id
+      ExternalHostedZoneName: /Foundation/External/Route53/HostedZone/Name
+      InternalHostedZoneName: /Foundation/Internal/Route53/HostedZone/Name
+      Vpc: /Foundation/EC2/VPC/Id
+      VpcCidrBlock: /Foundation/EC2/VPC/CidrBlock
+      VpcCidrPrefix: /Foundation/EC2/VPC/CidrBlockPrefix
+      NatGateway1: /Foundation/1/EC2/NatGateway/Id
+      NatGateway2: /Foundation/2/EC2/NatGateway/Id
+      NatRouteTable1: /Foundation/NAT/1/EC2/RouteTable/Id
+      NatRouteTable2: /Foundation/NAT/2/EC2/RouteTable/Id
+      PrivateRouteTable: /Foundation/Private/EC2/RouteTable/Id
+      PublicRouteTable: /Foundation/Public/EC2/RouteTable/Id
+      TransitGateway: /Foundation/EC2/TransitGateway/Id
+      PrivateSubnet1: /Foundation/Private/1/EC2/Subnet/Id
+      PrivateSubnet2: /Foundation/Private/2/EC2/Subnet/Id
+    ActiveDirectory:
+      Domain: /ActiveDirectory/Domain/DNS/Name
+      NetBIOS: /ActiveDirectory/Domain/NetBIOS/Name
+      AdminSecret: /ActiveDirectory/DomainAdmin/SecretsManager/Secret/Id
+      Subnet1: /ActiveDirectory/1/EC2/Subnet/Id
+      Subnet2: /ActiveDirectory/2/EC2/Subnet/Id
+      SubnetCidr1: /ActiveDirectory/1/EC2/Subnet/CidrBlock
+      SubnetCidr2: /ActiveDirectory/2/EC2/Subnet/CidrBlock
+      RouteTable1: /ActiveDirectory/1/EC2/RouteTable/Id
+      RouteTable2: /ActiveDirectory/2/EC2/RouteTable/Id
+      DMSecurityGroup: /ActiveDirectory/DomainMember/EC2/SecurityGroup/Id
+      DCSecurityGroup: /ActiveDirectory/DomainController/EC2/SecurityGroup/Id
+      DCAutomationDoc: /ActiveDirectory/DomainController/SSM/Document/Id
+      DCAssumeRole: /ActiveDirectory/DomainController/SSMAutomation/IAM/Role/Id
+      DCInstProfile: /ActiveDirectory/DomainController/IAM/InstanceProfile/Id
+      DCPrimaryIp1: /ActiveDirectory/DomainController/Primary/1/IpAddress
+      DCPrimaryIp2: /ActiveDirectory/DomainController/Primary/2/IpAddress
+      DCPrimaryCidr1: /ActiveDirectory/DomainController/Primary/1/CidrBlock
+      DCPrimaryCidr2: /ActiveDirectory/DomainController/Primary/2/CidrBlock
+      DCRemoteIp1: /ActiveDirectory/DomainController/Remote/1/IpAddress
+      DCRemoteIp2: /ActiveDirectory/DomainController/Remote/2/IpAddress
+      DCRemoteCidr1: /ActiveDirectory/DomainController/Remote/1/CidrBlock
+      DCRemoteCidr2: /ActiveDirectory/DomainController/Remote/2/CidrBlock
+      DCAWSIp1: /ActiveDirectory/DomainController/AWS/1/IpAddress
+      DCAWSIp2: /ActiveDirectory/DomainController/AWS/2/IpAddress
+      DCAWSNetBIOS1: /ActiveDirectory/DomainController/AWS/1/NetBIOS
+      DCAWSNetBIOS2: /ActiveDirectory/DomainController/AWS/2/NetBIOS
+      DCAWSInstance1: /ActiveDirectory/DomainController/AWS/1/EC2/Instance/Id
+      DCAWSInstance2: /ActiveDirectory/DomainController/AWS/2/EC2/Instance/Id
+      LDAPExternalName: /ActiveDirectory/LDAP/External/Route53/RecordSet/Name
+      LDAPInternalName: /ActiveDirectory/LDAP/Internal/Route53/RecordSet/Name
+      LDAPCertArn: /ActiveDirectory/LDAP/CertificateManager/Certificate/Arn
+
+Conditions:
+  IsRemote:
+    !Equals [Remote, !Ref TargetLocation]
+  IsAWS:
+    !Equals [AWS, !Ref TargetLocation]
+
+Resources:
+  # Create a certificate to protect the Active Directory ldap subdomain
+  LdapCertificate:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Certificates,Single]
+      Parameters:
+        Env: !Ref Env
+        Subdomain: !Ref LdapSubdomain
+        ExternalZoneName: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,ExternalHostedZoneName]
+        InternalZoneName: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,InternalHostedZoneName]
+        xExternalName: !FindInMap [Keys,ActiveDirectory,LDAPExternalName]
+        xInternalName: !FindInMap [Keys,ActiveDirectory,LDAPInternalName]
+        xCertificateArn: !FindInMap [Keys,ActiveDirectory,LDAPCertArn]
+
+
+  # This entry establishes the new AD route tables with a default route through
+  # the nat gateways.  There will be a route table for each AZ,pointing to the 
+  # nat gateway in each AZ.
+  RouteTables:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Network,NatGatewayRouting]
+      Parameters:
+        Env: !Ref Env
+        Vpc: !Sub 
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,Vpc]
+        NatGateway1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,NatGateway1]
+        NatGateway2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,NatGateway2]
+        xRouteTable1: !FindInMap [Keys,ActiveDirectory,RouteTable1]
+        xRouteTable2: !FindInMap [Keys,ActiveDirectory,RouteTable2]
+
+
+  # The subsequent two entries route AD traffic destined for the two remote 
+  # domain controllers from the subnets to the transit gateway.
+  TransitGatewayRouteRemoteDC1:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Network,TGNatRoute]
+      Parameters:
+        StaticRouteCidr: !Sub ${DCRemoteIp1}/32
+        TransitGateway: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,TransitGateway]
+        RouteTable1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,RouteTable1]
+        RouteTable2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,RouteTable2]
+    DependsOn:
+      - RouteTables
+  TransitGatewayRouteRemoteDC2:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Network,TGNatRoute]
+      Parameters:
+        StaticRouteCidr: !Sub ${DCRemoteIp2}/32
+        TransitGateway: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,TransitGateway]
+        RouteTable1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,RouteTable1]
+        RouteTable2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,RouteTable2]
+    DependsOn:
+      - RouteTables
+
+
+  # New AD subnets are created and connected to the above route tables.
+  Subnets:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Network,Subnet]
+      Parameters:
+        Env: !Ref Env
+        CidrPrefix: !Sub 
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,VpcCidrPrefix]
+        CidrSuffix1: 0.224/28
+        CidrSuffix2: 0.240/28
+        Vpc: !Sub 
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,Vpc]
+        AvailabilityZone1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone1]
+        AvailabilityZone2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone2]
+        RouteTable1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,RouteTable1]
+        RouteTable2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,RouteTable2]
+        xCidr1: !FindInMap [Keys,ActiveDirectory,SubnetCidr1]
+        xCidr2: !FindInMap [Keys,ActiveDirectory,SubnetCidr2]
+        xSubnet1: !FindInMap [Keys,ActiveDirectory,Subnet1]
+        xSubnet2: !FindInMap [Keys,ActiveDirectory,Subnet2]
+    DependsOn:
+      - RouteTables
+
+
+  # The AD init step creates the security groups,roles,and SSM 
+  # automation documents to be used by subsequent steps.
+  Init:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,ActiveDirectory,Init]
+      Parameters:
+        Env: !Ref Env
+        CfnScriptsUrl: !Sub
+          - ${CfnUrl}${Arg1}
+          - Arg1: !FindInMap [Templates,ActiveDirectory,ScriptsFolder]
+        CfnArn: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Bootstrap,BucketFullArn]
+        Vpc: !Sub 
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,Vpc]
+        VpcCidrBlock: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,VpcCidrBlock]
+        AdminUser: !Ref AdminUser
+        AdminPassword: !Ref AdminPassword
+        Domain: !Ref Domain
+        NetBIOS: !Ref NetBIOS
+        DCRemoteIp1: !Ref DCRemoteIp1
+        DCRemoteIp2: !Ref DCRemoteIp2
+        xDomain: !FindInMap [Keys,ActiveDirectory,Domain]
+        xNetBIOS: !FindInMap [Keys,ActiveDirectory,NetBIOS]
+        xAdminSecret: !FindInMap [Keys,ActiveDirectory,AdminSecret]
+        xDMSecurityGroup: !FindInMap [Keys,ActiveDirectory,DMSecurityGroup]
+        xDCSecurityGroup: !FindInMap [Keys,ActiveDirectory,DCSecurityGroup]
+        xDCAutomationDoc: !FindInMap [Keys,ActiveDirectory,DCAutomationDoc]
+        xDCAssumeRole: !FindInMap [Keys,ActiveDirectory,DCAssumeRole]
+        xDCInstProfile: !FindInMap [Keys,ActiveDirectory,DCInstProfile]
+        xDCRemoteIp1: !FindInMap [Keys,ActiveDirectory,DCRemoteIp1]
+        xDCRemoteIp2: !FindInMap [Keys,ActiveDirectory,DCRemoteIp2]
+        xDCRemoteCidr1: !FindInMap [Keys,ActiveDirectory,DCRemoteCidr1]
+        xDCRemoteCidr2: !FindInMap [Keys,ActiveDirectory,DCRemoteCidr2]
+
+
+  # The following two entries establish a route to the two domain controllers
+  # through the transit gateway, for all the standard / foundational routes.
+  # This is only performed for remote deployments (otherwise, default routes to
+  # the AWS hosted domain controllers suffice).
+  TransitGatewayRouteDC1:
+    Type: AWS::CloudFormation::Stack
+    Condition: IsRemote
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Network,TGDefaultRoutes]
+      Parameters:
+        StaticRouteCidr: !Sub ${DCRemoteIp1}/32
+        TransitGateway: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,TransitGateway]
+        NatRouteTable1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,NatRouteTable1]
+        NatRouteTable2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,NatRouteTable2]
+        PrivateRouteTable: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,PrivateRouteTable]
+        PublicRouteTable: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,PublicRouteTable]
+    DependsOn:
+      - Subnets
+      - Init
+  TransitGatewayRouteDC2:
+    Type: AWS::CloudFormation::Stack
+    Condition: IsRemote
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Network,TGDefaultRoutes]
+      Parameters:
+        StaticRouteCidr: !Sub ${DCRemoteIp2}/32
+        TransitGateway: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,TransitGateway]
+        NatRouteTable1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,NatRouteTable1]
+        NatRouteTable2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,NatRouteTable2]
+        PrivateRouteTable: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,PrivateRouteTable]
+        PublicRouteTable: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,PublicRouteTable]
+    DependsOn:
+      - Subnets
+      - Init
+
+
+  # The following entries will establish two new domain controllers located in
+  # AWS, and join them to the active directory domain.  Alternately, if the
+  # TargetLocation is Remote, it will simply point traffic to the remote IP's
+  DomainController1:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,ActiveDirectory,DomainController]
+      Parameters:
+        Env: !Ref Env
+        TargetLocation: !Ref TargetLocation
+        InstanceType: !Ref InstanceType
+        KeyPairName: !Ref KeyPairName
+        WINFULLBASE: !Ref WINFULLBASE
+        NetBIOS: !Sub ${NetBIOSPrefix}1
+        IpPrefix: !Sub 
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,VpcCidrPrefix]
+        IpSuffix: 0.229
+        Cidr: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,SubnetCidr1]
+        Subnet: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,Subnet1]
+        SecurityGroup: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCSecurityGroup]
+        SourceIp: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCRemoteIp1]
+        SourceCidr: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCRemoteCidr1]
+        AutomationDoc: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCAutomationDoc]
+        AssumeRole: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCAssumeRole]
+        DomainDNSName: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,Domain]
+        DomainNetBIOSName: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,NetBIOS]
+        AdminSecret: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,AdminSecret]
+        InstanceProfile: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCInstProfile]
+        xIpAddress: !FindInMap [Keys,ActiveDirectory,DCAWSIp1]
+        xInstance: !FindInMap [Keys,ActiveDirectory,DCAWSInstance1]
+        xPrimaryIp: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp1]
+        xPrimaryCidr: !FindInMap [Keys,ActiveDirectory,DCPrimaryCidr1]
+    DependsOn:
+      - Subnets
+      - Init
+  DomainController2:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,ActiveDirectory,DomainController]
+      Parameters:
+        Env: !Ref Env
+        TargetLocation: !Ref TargetLocation
+        InstanceType: !Ref InstanceType
+        KeyPairName: !Ref KeyPairName
+        WINFULLBASE: !Ref WINFULLBASE
+        NetBIOS: !Sub ${NetBIOSPrefix}2
+        IpPrefix: !Sub 
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,VpcCidrPrefix]
+        IpSuffix: 0.245
+        Cidr: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,SubnetCidr2]
+        Subnet: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,Subnet2]
+        SecurityGroup: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCSecurityGroup]
+        SourceIp: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCRemoteIp2]
+        SourceCidr: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCRemoteCidr2]
+        AutomationDoc: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCAutomationDoc]
+        AssumeRole: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCAssumeRole]
+        DomainDNSName: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,Domain]
+        DomainNetBIOSName: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,NetBIOS]
+        AdminSecret: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,AdminSecret]
+        InstanceProfile: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCInstProfile]
+        xIpAddress: !FindInMap [Keys,ActiveDirectory,DCAWSIp2]
+        xInstance: !FindInMap [Keys,ActiveDirectory,DCAWSInstance2]
+        xPrimaryIp: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp2]
+        xPrimaryCidr: !FindInMap [Keys,ActiveDirectory,DCPrimaryCidr2]
+    DependsOn:
+      - Subnets
+      - Init
+
+  # A special security group is created for domain members.  In this step, it is
+  # configured to allow traffic from the AD domain controllers in the subnets.
+  AllowDomainMemberTraffic:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,ActiveDirectory,MemberCidr]
+      Parameters:
+        SecurityGroup: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DMSecurityGroup]
+        Cidr1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCPrimaryCidr1]
+        Cidr2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCPrimaryCidr2]
+    DependsOn:
+      - DomainController1
+      - DomainController2
+
+
+  # Forward the DNS for the AD domain to the currently configured 
+  # domain controllers
+  DnsForwardDomainControllers:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Dns,OutboundResolver]
+      Parameters:
+        Env: !Ref Env
+        TargetDomain: !Ref Domain
+        TargetIp1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp1]
+        TargetIp2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp2]
+        Vpc: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,Vpc]
+        EndpointSubnet1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,Subnet1]
+        EndpointSubnet2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,Subnet2]
+        EndpointIpPrefix: !Sub 
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,VpcCidrPrefix]
+        EndpointIpSuffix1: 0.228
+        EndpointIpSuffix2: 0.244
+    DependsOn:
+      - DomainController1
+      - DomainController2
+
+
+  # Setup the Active Directory LDAP load balancer
+  LoadBalancer:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Network,NetworkLoadBalancer]
+      Parameters:
+        Env: !Ref Env
+        AvailabilityZone1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone1]
+        AvailabilityZone2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone2]
+        HostedZone: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,InternalHostedZone]
+        DnsName: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,LDAPInternalName]
+        CertificateArn: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,LDAPCertArn]
+        Vpc: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,Vpc]
+        Subnet1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,PrivateSubnet1]
+        Subnet2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,Foundation,PrivateSubnet2]
+        TargetIp1: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp1]
+        TargetIp2: !Sub
+          - /${Env}${Arg1}
+          - Arg1: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp2]
+    DependsOn:
+      - DomainController1
+      - DomainController2

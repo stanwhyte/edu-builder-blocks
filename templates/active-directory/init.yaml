@@ -1,0 +1,692 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This template creates the resources used by all of the domain 
+  controllers ultimately deployed into AWS.  It includes security groups, SSM 
+  automation documents, etc. and exports a number of properties for consumption 
+  by domain-controller.yaml
+Parameters:
+  Env:
+    Type: String
+    Default: ENV
+  CfnScriptsUrl:
+    Description: The folder containing the scripts used by the AD provisioning
+    Type: String
+  CfnArn:
+    Description: The SSM parameter with the full ARN of the templates bucket
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/Bootstrap/CloudFormation/S3/Bucket/FullArn
+  Vpc:
+    Description: The SSM parameter containing the id for the AWS VPC
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
+    Default: /ENV/Foundation/EC2/VPC/Id
+  VpcCidrBlock:
+    Description: The SSM parameter containing the CIDR block for the AWS VPC
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/Foundation/EC2/VPC/CidrBlock
+  AdminUser:
+    Default: DomainAdmin
+    Description: User name for existing account that is a Domain Administrator.
+    MaxLength: 100
+    MinLength: 1
+    Type: String
+  AdminPassword:
+    Description: Password for the existing domain admin user. 
+    MaxLength: 32
+    MinLength: 8
+    NoEcho: true
+    Type: String
+  Domain:
+    AllowedPattern: '[a-zA-Z0-9\-]+\..+'
+    Default: ad.example.com
+    Description: Fully qualified domain name (FQDN) of the forest root domain 
+      e.g. ad.example.com
+    MaxLength: 255
+    MinLength: 2
+    Type: String
+  NetBIOS:
+    AllowedPattern: '[a-zA-Z0-9\-]+'
+    Default: example
+    Description: NetBIOS name of the domain (up to 15 characters) for users of 
+      earlier versions of Windows e.g. EXAMPLE
+    MaxLength: 15
+    MinLength: 1
+    Type: String
+  DCRemoteIp1:
+    Description: The IP address for the first remote AD domain controller
+    Type: String
+    Default: 10.20.0.10
+  DCRemoteIp2:
+    Description: The IP address for the second remote AD domain controller
+    Type: String
+    Default: 10.20.32.10
+  xDomain:
+    Type: String
+    Default: /WORKLOAD/Domain/DNS/Name
+  xNetBIOS:
+    Type: String
+    Default: /WORKLOAD/Domain/NetBIOS/Name
+  xAdminSecret:
+    Type: String
+    Default: /WORKLOAD/DomainAdmin/SecretsManager/Secret/Id
+  xDCInstProfile:
+    Type: String
+    Default: /WORKLOAD/DomainController/IAM/InstanceProfile/Id
+  xDMSecurityGroup:
+    Type: String
+    Default: /WORKLOAD/DomainMember/EC2/SecurityGroup/Id
+  xDCSecurityGroup:
+    Type: String
+    Default: /WORKLOAD/DomainController/EC2/SecurityGroup/Id
+  xDCAutomationDoc:
+    Type: String
+    Default: /WORKLOAD/DomainController/SSM/Document/Id
+  xDCAssumeRole:
+    Type: String
+    Default: /WORKLOAD/DomainController/SSMAutomation/IAM/Role/Id
+  xDCRemoteIp1:
+    Type: String
+    Default: /WORKLOAD/DomainController/Remote/1/IpAddress
+  xDCRemoteIp2:
+    Type: String
+    Default: /WORKLOAD/DomainController/Remote/2/IpAddress
+  xDCRemoteCidr1:
+    Type: String
+    Default: /WORKLOAD/DomainController/Remote/1/CidrBlock
+  xDCRemoteCidr2:
+    Type: String
+    Default: /WORKLOAD/DomainController/Remote/2/CidrBlock
+Resources:
+  QuickStartLogs:
+    Type: AWS::Logs::LogGroup
+    Properties: 
+      LogGroupName: !Sub '/${Env}/active-directory/domain-controllers'
+      RetentionInDays: 30
+  AWSQuickstartActiveDirectoryDS:
+    Type: AWS::SSM::Document
+    Properties:
+      DocumentType: Automation
+      Content:
+        schemaVersion: "0.3"
+        description: "Deploy AD with SSM Automation"
+        # Role that is utilized to perform the steps within the Automation 
+        # Document. In this case to be able to Signal CFN and Describe 
+        # Instances. 
+        assumeRole: "{{AutomationAssumeRole}}"
+        # Gathering parameters needed to configure DCs in the Quick Start
+        parameters: 
+          ADServerNetBIOSName:
+            default: "DC1"
+            description: "NetBIOS name of Active Directory server (up to 15 characters)"
+            type: "String"
+          ADServerPrivateIP:
+            default: "10.0.0.10"
+            description: "Fixed private IP for the Active Directory server"
+            type: "String"
+          ADAdminSecParamName:
+            description: "AWS Secrets Parameter Name with domain admin id and passwd."
+            type: "String"
+          DomainDNSName: 
+            default: "ad.example.com"
+            description: "Fully qualified domain name (FQDN) of the forest root domain"
+            type: "String"
+          DomainNetBIOSName: 
+            default: "example"
+            description: "NetBIOS name of the Windows e.g. EXAMPLE"
+            type: "String"
+          StackName:
+            default: ""
+            description: "Stack Name Input for cfn resource signal"
+            type: "String"
+          AutomationAssumeRole:
+            default: ""
+            description: "(Optional) The Automation role ARN Automation."
+            type: "String"
+          ExternalDomainControllerIp:
+            default: "10.20.0.10"
+            description: "The IP address for the external domain controller"
+            type: "String"
+        mainSteps:
+        # This step grabs the Instance ID for the node that will be configured 
+        # as domain controller
+        - name: "dcsInstanceIds"
+          action: aws:executeAwsApi
+          onFailure: "step:signalfailure"
+          nextStep: "dcsInstallDscModules"
+          inputs:
+            Service: ec2
+            Api: DescribeInstances
+            Filters:  
+            - Name: "tag:Name"
+              Values: [ "{{ADServerNetBIOSName}}" ]
+            - Name: "tag:aws:cloudformation:stack-name"
+              Values: ["{{StackName}}"]
+            - Name: "instance-state-name"
+              Values: [ "running" ]
+          outputs:
+          - Name: InstanceIds
+            Selector: "$.Reservations..Instances..InstanceId"
+            Type: "StringList"
+        # Installs needed Powershell DSC Modules and components on the node.
+        - name: "dcsInstallDscModules"
+          action: "aws:runCommand"
+          onFailure: "step:signalfailure"
+          nextStep: "dcsLCMConfig"
+          inputs:
+            DocumentName: "AWS-RunRemoteScript"
+            InstanceIds:
+            - "{{dcsInstanceIds.InstanceIds}}"
+            CloudWatchOutputConfig:
+              CloudWatchOutputEnabled: "true"
+              CloudWatchLogGroupName: !Ref 'QuickStartLogs'
+            Parameters:
+              sourceType: "S3"
+              sourceInfo: !Sub '{"path": "${CfnScriptsUrl}install-ad-modules.ps1"}'
+              commandLine: "./install-ad-modules.ps1"
+        # Configures Local Configuration Manager on the node.
+        - name: "dcsLCMConfig"
+          action: "aws:runCommand"
+          onFailure: "step:signalfailure"
+          nextStep: "dcInstanceId"
+          inputs:
+            DocumentName: "AWS-RunRemoteScript"
+            InstanceIds:
+            - "{{dcsInstanceIds.InstanceIds}}"
+            CloudWatchOutputConfig:
+              CloudWatchOutputEnabled: "true"
+              CloudWatchLogGroupName: !Ref 'QuickStartLogs'
+            Parameters:
+              sourceType: "S3"
+              sourceInfo: !Sub '{"path": "${CfnScriptsUrl}LCM-Config.ps1"}'
+              commandLine: "./LCM-Config.ps1"
+        # Grabs the Instance ID for the node that will be configured DC.
+        - name: "dcInstanceId"
+          action: aws:executeAwsApi
+          onFailure: "step:signalfailure"
+          nextStep: "createDCMof"
+          inputs:
+            Service: ec2
+            Api: DescribeInstances
+            Filters:  
+            - Name: "tag:Name"
+              Values: [ "{{ADServerNetBIOSName}}" ]
+            - Name: "tag:aws:cloudformation:stack-name"
+              Values: ["{{StackName}}"]
+            - Name: "instance-state-name"
+              Values: [ "running" ]
+          outputs:
+          - Name: InstanceId
+            Selector: "$.Reservations[0].Instances[0].InstanceId"
+            Type: "String"
+        # Generates MOF file on DC Node to be processed by LCM.
+        - name: "createDCMof"
+          action: "aws:runCommand"
+          onFailure: "step:signalfailure"
+          nextStep: "configDC"
+          inputs:
+            DocumentName: "AWS-RunRemoteScript"
+            InstanceIds:
+            - "{{dcInstanceId.InstanceId}}"
+            CloudWatchOutputConfig:
+              CloudWatchOutputEnabled: "true"
+              CloudWatchLogGroupName: !Ref 'QuickStartLogs'
+            Parameters:
+              sourceType: "S3"
+              sourceInfo: !Sub '{"path": "${CfnScriptsUrl}ConfigDC.ps1"}'
+              commandLine: "./ConfigDC.ps1 -ADServerNetBIOSName {{ADServerNetBIOSName}} -DomainNetBIOSName {{DomainNetBIOSName}} -DomainDNSName {{DomainDNSName}} -ExternalDomainControllerIp {{ExternalDomainControllerIp}} -ADAdminSecParam {{ADAdminSecParamName}}"
+        # Kicks off DSC Configuration and loops\reboots until Node matches 
+        # Configuration defined in MOF file.
+        - name: "configDC"
+          action: aws:runCommand
+          onFailure: "step:signalfailure"
+          nextStep: "DnsConfig"
+          inputs:
+            DocumentName: AWS-RunPowerShellScript
+            InstanceIds: 
+              - "{{dcInstanceId.InstanceId}}"
+            CloudWatchOutputConfig:
+              CloudWatchOutputEnabled: "true"
+              CloudWatchLogGroupName: !Ref 'QuickStartLogs'
+            Parameters:
+              commands: 
+                - |     
+                   function DscStatusCheck () {
+                       $LCMState = (Get-DscLocalConfigurationManager).LCMState
+                       if ($LCMState -eq 'PendingConfiguration' -Or $LCMState -eq 'PendingReboot') {
+                           'returning 3010, should continue after reboot'
+                           exit 3010
+                       } else {
+                           'Completed'
+                       }
+                   }
+                   
+                   Start-DscConfiguration 'C:\AWSQuickstart\ConfigDC' -Wait -Verbose -Force
+                   
+                   DscStatusCheck
+        # Ensure that AD servers point to themselves for DNS
+        - name: "DnsConfig"
+          action: "aws:runCommand"
+          onFailure: "step:signalfailure"
+          inputs:
+            DocumentName: "AWS-RunRemoteScript"
+            InstanceIds:
+              - "{{dcInstanceId.InstanceId}}"
+            CloudWatchOutputConfig:
+              CloudWatchOutputEnabled: "true"
+              CloudWatchLogGroupName: !Ref 'QuickStartLogs'
+            Parameters:
+              sourceType: S3
+              sourceInfo: !Sub '{"path": "${CfnScriptsUrl}Dns-Config.ps1"}'
+              commandLine: "./Dns-Config.ps1 -ADServerNetBIOSName {{ADServerNetBIOSName}} -ADServerPrivateIP {{ADServerPrivateIP}} -ExternalDomainControllerIp {{ExternalDomainControllerIp}} -DomainDNSName {{DomainDNSName}} -ADAdminSecParam {{ADAdminSecParamName}}"
+        # Determines if CFN Needs to be Signaled or if Work flow should just end
+        - name: CFNSignalEnd
+          action: aws:branch
+          inputs:
+            Choices:
+            - NextStep: signalsuccess
+              Not: 
+                Variable: "{{StackName}}"
+                StringEquals: ""
+            - NextStep: sleepend
+              Variable: "{{StackName}}"
+              StringEquals: ""
+        # If all steps complete successfully signals CFN of Success
+        - name: "signalsuccess"
+          action: "aws:executeAwsApi"
+          isEnd: True
+          inputs:
+            Service: cloudformation
+            Api: SignalResource
+            LogicalResourceId: "DomainController"
+            StackName: "{{StackName}}"
+            Status: SUCCESS
+            UniqueId: "{{dcInstanceId.InstanceId}}"
+        # If CFN Signl Not Needed this sleep ends work flow
+        - name: "sleepend"
+          action: "aws:sleep"
+          isEnd: True
+          inputs:
+            Duration: PT1S
+        # If any steps fails signals CFN of Failure
+        - name: "signalfailure"
+          action: "aws:executeAwsApi"
+          inputs:
+            Service: cloudformation
+            Api: SignalResource
+            LogicalResourceId: "DomainController"
+            StackName: "{{StackName}}"
+            Status: FAILURE
+            UniqueId: "{{dcInstanceId.InstanceId}}"
+  ADRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Policies:
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - s3:GetObject
+                Resource: "*"
+                Effect: Allow
+          PolicyName: aws-quick-start-s3-policy
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:SignalResource
+                Resource: !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*'
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeInstances
+                  - ec2:DescribeInstanceStatus
+                  - ssm:*
+                Resource: '*'
+          PolicyName: AD-SSM-Automation
+      Path: /
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+                - ssm.amazonaws.com
+            Effect: Allow
+        Version: '2012-10-17'
+  ADSsmPassRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: AD-SSM-PassRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - iam:PassRole
+            Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${ADRole}'
+      Roles:
+        - !Ref 'ADRole'
+  ADServerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Policies:
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - s3:GetObject
+                Resource: !Sub '${CfnArn}*'
+                Effect: Allow
+          PolicyName: aws-quick-start-s3-policy
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                Resource: 
+                  - !Ref 'ADAdminSecrets'
+              - Effect: Allow
+                Action:
+                  - ssm:StartAutomationExecution
+                Resource: '*'
+          PolicyName: AD-SSM-Secrets
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${ADRole}'
+          PolicyName: AD-SSM-PassRole
+      Path: /
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Effect: Allow
+        Version: '2012-10-17'
+  ADServerProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref 'ADServerRole'
+      Path: /
+  ADAdminSecrets:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub 'ADAdministratorSecret-${AWS::StackName}'
+      Description: Administrator Password for AD Quick Start
+      SecretString: !Sub '{ "username" : "${AdminUser}", "password" : "${AdminPassword}" }'
+  DomainMembersSG: 
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: !Sub 'Domain Members ${Env}'
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5985
+          ToPort: 5985
+          CidrIp: !Ref VpcCidrBlock
+        - IpProtocol: tcp
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: !Ref VpcCidrBlock
+  DomainControllersSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Domain Controllers Security Group
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5985
+          ToPort: 5985
+          CidrIp: !Ref VpcCidrBlock
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref VpcCidrBlock
+        - IpProtocol: tcp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: !Ref VpcCidrBlock
+        - IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: !Ref VpcCidrBlock
+        - IpProtocol: tcp
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: !Ref VpcCidrBlock
+        - IpProtocol: tcp
+          FromPort: 445
+          ToPort: 445
+          CidrIp: !Ref VpcCidrBlock
+        - IpProtocol: tcp
+          FromPort: 139
+          ToPort: 139
+          CidrIp: !Ref VpcCidrBlock
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: !Ref VpcCidrBlock
+        - IpProtocol: udp
+          FromPort: 123
+          ToPort: 123
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: tcp
+          FromPort: 135
+          ToPort: 135
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: tcp
+          FromPort: 9389
+          ToPort: 9389
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: udp
+          FromPort: 138
+          ToPort: 138
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: tcp
+          FromPort: 445
+          ToPort: 445
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: udp
+          FromPort: 445
+          ToPort: 445
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: udp
+          FromPort: 464
+          ToPort: 464
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: tcp
+          FromPort: 464
+          ToPort: 464
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: tcp
+          FromPort: 49152
+          ToPort: 65535
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: udp
+          FromPort: 49152
+          ToPort: 65535
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: tcp
+          FromPort: 389
+          ToPort: 389
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: udp
+          FromPort: 389
+          ToPort: 389
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: tcp
+          FromPort: 636
+          ToPort: 636
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: tcp
+          FromPort: 3268
+          ToPort: 3268
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: tcp
+          FromPort: 3269
+          ToPort: 3269
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: tcp
+          FromPort: 9389
+          ToPort: 9389
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: tcp
+          FromPort: 88
+          ToPort: 88
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: udp
+          FromPort: 88
+          ToPort: 88
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: udp
+          FromPort: 5355
+          ToPort: 5355
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: udp
+          FromPort: 137
+          ToPort: 137
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: tcp
+          FromPort: 139
+          ToPort: 139
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: tcp
+          FromPort: 5722
+          ToPort: 5722
+          SourceSecurityGroupId: !Ref DomainMembersSG
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          SourceSecurityGroupId: !Ref DomainMembersSG
+  DCSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Security Group Rule between Domain Controllers
+      GroupId: !Ref DomainControllersSG
+      IpProtocol: '-1'
+      FromPort: -1
+      ToPort: -1
+      SourceSecurityGroupId: !Ref DomainControllersSG
+  ParamRemoteDomainControllerIP1:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Env}${xDCRemoteIp1}
+      Description: The first of two domain controllers hosted on 
+        customer premises
+      Value: !Ref DCRemoteIp1
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamRemoteDomainControllerIP2:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Env}${xDCRemoteIp2}
+      Description: The second of two domain controllers hosted on 
+        customer premises
+      Value: !Ref DCRemoteIp2
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamRemoteDomainControllerCidr1:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Env}${xDCRemoteCidr1}
+      Description: The CIDR block for first of two domain controllers 
+        hosted on customer premises
+      Value: !Sub ${DCRemoteIp1}/32
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamRemoteDomainControllerCidr2:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Env}${xDCRemoteCidr2}
+      Description: The CIDR block for the second of two domain controllers 
+        hosted on customer premises
+      Value: !Sub ${DCRemoteIp2}/32
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamControllersSG:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Env}${xDCSecurityGroup}
+      Description: The security group associated with all of the 
+        domain controllers hosted in AWS
+      Value: !Ref DomainControllersSG
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamMembersSG:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Env}${xDMSecurityGroup}
+      Description: The security group associated with all domain members
+      Value: !Ref DomainMembersSG
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamAWSQuickstartActiveDirectoryDS:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Env}${xDCAutomationDoc}
+      Description: The SSM automation document associated with 
+        the domain controllers.
+      Value: !Ref AWSQuickstartActiveDirectoryDS
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamDomainDNSName:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Env}${xDomain}
+      Description: The active directory root dns domain (i.e. ad.example.com)
+      Value: !Ref Domain
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamDomainNetBIOSName:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Env}${xNetBIOS}
+      Description: The active directory DomainNetBIOSName
+      Value: !Ref NetBIOS
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamADAdminSecrets:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Env}${xAdminSecret}
+      Description: The active directory ADAdminSecrets
+      Value: !Ref ADAdminSecrets
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamAutomationAssumeRole:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Env}${xDCAssumeRole}
+      Description: The active directory AutomationAssumeRole
+      Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${ADRole}'
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamADServerProfile:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Env}${xDCInstProfile}
+      Description: The active directory ADServerProfile
+      Value: !Ref ADServerProfile
+      Type: String
+      Tags:
+        Environment: !Ref Env

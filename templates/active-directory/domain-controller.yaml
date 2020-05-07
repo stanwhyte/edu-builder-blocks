@@ -1,0 +1,208 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This template creates a single Windows server and promotes it to a
+  domain controller in the domain referenced by the DNS settings.
+Parameters:
+  Env:
+    Type: String
+    Default: ENV
+  TargetLocation:
+    Type: String
+    AllowedValues: 
+      - Remote
+      - AWS
+  InstanceType:
+    AllowedValues:
+      - t2.large
+      - t3.large
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m5.large
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+    Default: m5.xlarge
+    Description: Amazon EC2 instance type for the Active Directory instance
+    Type: String
+  KeyPairName:
+    Description: Public/private key pairs allow you to securely connect to 
+      your instance after it launches
+    Type: AWS::EC2::KeyPair::KeyName
+  WINFULLBASE:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default:
+        /aws/service/ami-windows-latest/Windows_Server-2019-English-Full-Base
+  NetBIOS:
+    Description: The netbios to be assigned to the domain controller
+    Default: AWSDC1
+    Type: String
+  IpPrefix:
+    Description: The first two octets of the IP addresses
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/Foundation/EC2/VPC/CidrBlockPrefix
+  IpSuffix:
+    Description: The last two octets of the DC's static IP
+    Default: 0.5
+    Type: String
+  Cidr:
+    Description: The CIDR range for the domain controller
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/ActiveDirectory/1/EC2/Subnet/CidrBlock
+  Subnet:
+    Description: The IP for the source domain controller
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+    Default: /ENV/ActiveDirectory/1/EC2/Subnet/Id
+  SecurityGroup:
+    Description: The security group for the domain controller
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::SecurityGroup::Id>
+    Default: /ENV/ActiveDirectory/DomainController/EC2/SecurityGroup/Id
+  SourceIp:
+    Description: The IP for the source domain controller
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/ActiveDirectory/DomainController/Remote/1/IpAddress
+  SourceCidr:
+    Description: The CIDR range for the source / remote domain controller
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/ActiveDirectory/DomainController/Remote/1/CidrBlock
+  AutomationDoc:
+    Description: The IP for the source domain controller
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/ActiveDirectory/DomainController/SSM/Document/Id
+  AssumeRole:
+    Description: The IP for the source domain controller
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/ActiveDirectory/DomainController/SSMAutomation/IAM/Role/Id
+  DomainDNSName:
+    Description: The IP for the source domain controller
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/ActiveDirectory/Domain/DNS/Name
+  DomainNetBIOSName:
+    Description: The IP for the source domain controller
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/ActiveDirectory/Domain/NetBIOS/Name
+  AdminSecret:
+    Description: The IP for the source domain controller
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/ActiveDirectory/DomainAdmin/SecretsManager/Secret/Id
+  InstanceProfile:
+    Description: The IP for the source domain controller
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/ActiveDirectory/DomainController/IAM/InstanceProfile/Id
+  xIpAddress:
+    Description: The IP for the target domain controller
+    Default: /WORKLOAD/DomainController/AWS/1/IpAddress
+    Type: String
+  xInstance:
+    Description: The instance id for the target domain controller
+    Default: /WORKLOAD/DomainController/AWS/1/EC2/Instance/Id
+    Type: String
+  xPrimaryIp:
+    Description: The IP for the primary domain controller
+    Default: /WORKLOAD/DomainController/Primary/1/IpAddress
+    Type: String
+  xPrimaryCidr:
+    Description: The CIDR block for the primary domain controller
+    Default: /WORKLOAD/DomainController/Primary/1/CidrBlock
+    Type: String
+
+Conditions:
+  IsRemote:
+    !Equals [Remote, !Ref TargetLocation]
+  IsAWS:
+    !Equals [AWS, !Ref TargetLocation]
+
+Resources:
+  DomainController:
+    Type: AWS::EC2::Instance
+    Condition: IsAWS
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT60M
+        Count: 1
+    Properties:
+      ImageId: !Ref WINFULLBASE
+      IamInstanceProfile: !Ref InstanceProfile
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref Subnet
+      Tags:
+        - Key: Name
+          Value: !Ref NetBIOS
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 100
+            VolumeType: gp2
+      SecurityGroupIds:
+        - !Ref SecurityGroup
+      PrivateIpAddress: !Sub ${IpPrefix}.${IpSuffix}
+      KeyName: !Ref KeyPairName
+      UserData: !Base64
+        Fn::Join:
+          - ''
+          - - "<powershell>\n"
+            - 'Start-SSMAutomationExecution -DocumentName "'
+            - !Ref AutomationDoc
+            - '" -Parameter @{'
+            - '"ADServerNetBIOSName"="'
+            - !Ref NetBIOS
+            - '";"ADServerPrivateIP"="'
+            - !Sub ${IpPrefix}.${IpSuffix}
+            - '";"ExternalDomainControllerIp"="'
+            - !Ref SourceIp
+            - '";"DomainDNSName"="'
+            - !Ref DomainDNSName
+            - '";"DomainNetBIOSName"="'
+            - !Ref DomainNetBIOSName
+            - '";"ADAdminSecParamName"="'
+            - !Ref AdminSecret
+            - '";"StackName"="'
+            - !Sub '${AWS::StackName}'
+            - '";"AutomationAssumeRole"="'
+            - !Ref AssumeRole
+            - '"}'
+            - "\n</powershell>\n"
+  DomainControllerIP:
+    Type: AWS::SSM::Parameter
+    Condition: IsAWS
+    Properties:
+      Description: The ip address for the domain controller
+      Type: String
+      Value: !Sub ${IpPrefix}.${IpSuffix}
+      Name: !Sub /${Env}${xIpAddress}
+      Tags:
+        Environment: !Ref Env
+  DomainControllerInstanceId:
+    Type: AWS::SSM::Parameter
+    Condition: IsAWS
+    Properties:
+      Description: The instance ID for the domain controller
+      Type: String
+      Value: !Ref DomainController
+      Name: !Sub /${Env}${xInstance}
+      Tags:
+        Environment: !Ref Env
+  DomainControllerPrimaryIp:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The ip address associated with the primary domain controller
+      Type: String
+      Value: !If 
+        - IsAWS
+        - !Sub ${IpPrefix}.${IpSuffix}
+        - !Ref SourceIp
+      Name: !Sub /${Env}${xPrimaryIp}
+      Tags:
+        Environment: !Ref Env
+  DomainControllerPrimaryCidr:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The cidr block associated with the primary domain controller
+      Type: String
+      Value: !If
+        - IsAWS
+        - !Ref Cidr
+        - !Ref SourceCidr
+      Name: !Sub /${Env}${xPrimaryCidr}
+      Tags:
+        Environment: !Ref Env

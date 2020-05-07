@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  CfnUrl:
+    Type: String
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+  LatestAmiId:
+    Type: String
+  RDGWCIDR:
+    Type: String
+  NumberOfRDGWHosts:
+    Type: String
+  RDGWInstanceType:
+    Type: String
+  AdminSecret:
+    Description: SSM parameter containing the domain administrator credentials
+    Type: AWS::SSM::Parameter::Value<String>
+  DomainDNSName:
+    Type: AWS::SSM::Parameter::Value<String>
+  DomainNetBIOSName:
+    Type: AWS::SSM::Parameter::Value<String>
+  DomainMemberSGID:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::SecurityGroup::Id>
+  PublicSubnet1ID:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+  PublicSubnet2ID:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+  BucketName:
+    Type: AWS::SSM::Parameter::Value<String>
+  BucketKeyPrefix:
+    Type: AWS::SSM::Parameter::Value<String>
+  BucketRegion:
+    Type: AWS::SSM::Parameter::Value<String>
+  Vpc:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
+Resources:
+  RdpServer:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub ${CfnUrl}external/quickstart-microsoft-activedirectory/submodules/quickstart-microsoft-rdgateway/templates/rdgw-domain.template
+      Parameters:
+        KeyPairName: !Ref KeyPairName
+        LatestAmiId: !Ref LatestAmiId
+        RDGWCIDR: !Ref RDGWCIDR
+        NumberOfRDGWHosts: !Ref NumberOfRDGWHosts
+        RDGWInstanceType: !Ref RDGWInstanceType
+        DomainAdminUser:
+          !Sub '{{resolve:secretsmanager:${AdminSecret}:SecretString:username}}'
+        DomainAdminPassword:
+          !Sub '{{resolve:secretsmanager:${AdminSecret}:SecretString:password}}'
+        DomainDNSName: !Ref DomainDNSName
+        DomainNetBIOSName: !Ref DomainNetBIOSName
+        DomainMemberSGID: !Ref DomainMemberSGID
+        PublicSubnet1ID: !Ref PublicSubnet1ID
+        PublicSubnet2ID: !Ref PublicSubnet2ID
+        QSS3BucketName: !Ref BucketName
+        QSS3KeyPrefix: 
+          !Sub ${BucketKeyPrefix}external/quickstart-microsoft-activedirectory/submodules/quickstart-microsoft-rdgateway/
+        QSS3BucketRegion: !Ref BucketRegion
+        VPCID: !Ref Vpc

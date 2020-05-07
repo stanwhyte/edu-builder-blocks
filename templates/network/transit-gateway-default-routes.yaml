@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  StaticRouteCidr:
+    Description: The CIDR range to be routed through the transit gateway
+    Type: String
+  TransitGateway:
+    Description: The SSM parameter reference for the transit gateway id
+    Default: /ENV/Foundation/EC2/TransitGateway/Id
+    Type: AWS::SSM::Parameter::Value<String>
+  NatRouteTable1:
+    Description: The SSM parameter reference for the first NAT route table
+    Default: /ENV/Foundation/NAT/1/EC2/RouteTable/Id
+    Type: AWS::SSM::Parameter::Value<String>
+  NatRouteTable2:
+    Description: The SSM parameter reference for the second NAT route table
+    Default: /ENV/Foundation/NAT/2/EC2/RouteTable/Id
+    Type: AWS::SSM::Parameter::Value<String>
+  PrivateRouteTable:
+    Description: The SSM parameter reference for the private route table
+    Default: /ENV/Foundation/Private/EC2/RouteTable/Id
+    Type: AWS::SSM::Parameter::Value<String>
+  PublicRouteTable:
+    Description: The SSM parameter reference for the public route table
+    Default: /ENV/Foundation/Public/EC2/RouteTable/Id
+    Type: AWS::SSM::Parameter::Value<String>
+Resources:
+  TransitGatewayPublicRoute:
+    Type: AWS::EC2::Route
+    Properties: 
+      DestinationCidrBlock: !Ref StaticRouteCidr
+      RouteTableId: !Ref PublicRouteTable
+      TransitGatewayId: !Ref TransitGateway
+  TransitGatewayPrivateRoute:
+    Type: AWS::EC2::Route
+    Properties: 
+      DestinationCidrBlock: !Ref StaticRouteCidr
+      RouteTableId: !Ref PrivateRouteTable
+      TransitGatewayId: !Ref TransitGateway
+  TransitGatewayNatRoute1:
+    Type: AWS::EC2::Route
+    Properties: 
+      DestinationCidrBlock: !Ref StaticRouteCidr
+      RouteTableId: !Ref NatRouteTable1
+      TransitGatewayId: !Ref TransitGateway
+  TransitGatewayNatRoute2:
+    Type: AWS::EC2::Route
+    Properties: 
+      DestinationCidrBlock: !Ref StaticRouteCidr
+      RouteTableId: !Ref NatRouteTable2
+      TransitGatewayId: !Ref TransitGateway

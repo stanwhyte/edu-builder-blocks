@@ -1,0 +1,266 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This template adds privileges to the domain member SG for a Domain
+  Controller cidr range (inside or outside the VPC)
+Parameters:
+  SecurityGroup:
+    Default: /ENV/ActiveDirectory/DomainMember/EC2/SecurityGroup/Id
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::SecurityGroup::Id>
+  Cidr1:
+    Default: /ENV/ActiveDirectory/1/EC2/Subnet/CidrBlock
+    Type: AWS::SSM::Parameter::Value<String>
+  Cidr2:
+    Default: /ENV/ActiveDirectory/2/EC2/Subnet/CidrBlock
+    Type: AWS::SSM::Parameter::Value<String>
+Resources:
+  Inbound1RuleTCP3389: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 3389
+      ToPort: 3389
+      CidrIp: !Ref Cidr1
+       
+  Inbound1RuleTCP5985: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 5985
+      ToPort: 5985
+      CidrIp: !Ref Cidr1
+       
+  Inbound1RuleTCP53: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 53
+      ToPort: 53
+      CidrIp: !Ref Cidr1
+       
+  Inbound1RuleUDP53: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: udp
+      FromPort: 53
+      ToPort: 53
+      CidrIp: !Ref Cidr1
+       
+  Inbound1RuleTCPEphemeral: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 49152
+      ToPort: 65535
+      CidrIp: !Ref Cidr1
+       
+  Inbound1RuleUDPEphemeral: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: udp
+      FromPort: 49152
+      ToPort: 65535
+      CidrIp: !Ref Cidr1
+       
+  Inbound1RuleTCP88: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 88
+      ToPort: 88
+      CidrIp: !Ref Cidr1
+       
+  Inbound1RuleUDP88: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: udp
+      FromPort: 88
+      ToPort: 88
+      CidrIp: !Ref Cidr1
+       
+  Inbound1RuleTCP88: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 445
+      ToPort: 445
+      CidrIp: !Ref Cidr1
+       
+  Inbound1RuleTCP445: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 445
+      ToPort: 445
+      CidrIp: !Ref Cidr1
+       
+  Inbound1RuleUDP445: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: udp
+      FromPort: 445
+      ToPort: 445
+      CidrIp: !Ref Cidr1
+       
+  Inbound1RuleTCP389: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 389
+      ToPort: 389
+      CidrIp: !Ref Cidr1
+       
+  Inbound1RuleUDP389: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: udp
+      FromPort: 389
+      ToPort: 389
+      CidrIp: !Ref Cidr1
+       
+  Inbound1RuleTCP636: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 636
+      ToPort: 636
+      CidrIp: !Ref Cidr1
+       
+  Inbound2RuleTCP3389: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 3389
+      ToPort: 3389
+      CidrIp: !Ref Cidr2
+       
+  Inbound2RuleTCP5985: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 5985
+      ToPort: 5985
+      CidrIp: !Ref Cidr2
+       
+  Inbound2RuleTCP53: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 53
+      ToPort: 53
+      CidrIp: !Ref Cidr2
+       
+  Inbound2RuleUDP53: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: udp
+      FromPort: 53
+      ToPort: 53
+      CidrIp: !Ref Cidr2
+       
+  Inbound2RuleTCPEphemeral: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 49152
+      ToPort: 65535
+      CidrIp: !Ref Cidr2
+       
+  Inbound2RuleUDPEphemeral: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: udp
+      FromPort: 49152
+      ToPort: 65535
+      CidrIp: !Ref Cidr2
+       
+  Inbound2RuleTCP88: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 88
+      ToPort: 88
+      CidrIp: !Ref Cidr2
+       
+  Inbound2RuleUDP88: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: udp
+      FromPort: 88
+      ToPort: 88
+      CidrIp: !Ref Cidr2
+       
+  Inbound2RuleTCP88: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 445
+      ToPort: 445
+      CidrIp: !Ref Cidr2
+       
+  Inbound2RuleTCP445: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 445
+      ToPort: 445
+      CidrIp: !Ref Cidr2
+       
+  Inbound2RuleUDP445: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: udp
+      FromPort: 445
+      ToPort: 445
+      CidrIp: !Ref Cidr2
+       
+  Inbound2RuleTCP389: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 389
+      ToPort: 389
+      CidrIp: !Ref Cidr2
+       
+  Inbound2RuleUDP389: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: udp
+      FromPort: 389
+      ToPort: 389
+      CidrIp: !Ref Cidr2
+       
+  Inbound2RuleTCP636: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 636
+      ToPort: 636
+      CidrIp: !Ref Cidr2
+       

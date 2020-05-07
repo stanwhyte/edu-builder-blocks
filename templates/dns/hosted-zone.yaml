@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  Env:
+    Type: String
+    Default: ENV
+  ExternalZoneName:
+    Description: An external (internet-facing) DNS name used to create a
+      Route53 hosted zone for which AWS will be delegated responsibility.
+      If this domain is different from the internal zone name, the owner
+      of the internet facing DNS service will need to create CNAME entries
+      pointing from the *real* domain (i.e. foo.example.com) to the
+      domain created here (i.e. foo.prod.aws.example.com).
+    Type: String
+    Default: dev.aws.example.com
+  InternalZoneName:
+    Description: The root domain that customers will finally see in their
+      browser.  Used to provision an internal Route53 hosted zone.
+    Type: String
+    Default: example.com
+  Vpc:
+    Description: The SSM parameter containing the id for the AWS VPC
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
+    Default: /ENV/Foundation/EC2/VPC/Id
+  xExternalHostedZone:
+    Description: The SSM parameter reference for the external hosted zone id
+    Default: /Foundation/External/Route53/HostedZone/Id
+    Type: String
+  xInternalHostedZone:
+    Description: The SSM parameter reference for the internal hosted zone id
+    Default: /Foundation/Internal/Route53/HostedZone/Id
+    Type: String
+  xExternalHostedZoneName:
+    Description: The SSM parameter reference for the external hosted zone name
+    Default: /Foundation/External/Route53/HostedZone/Name
+    Type: String
+  xInternalHostedZoneName:
+    Description: The SSM parameter reference for the internal hosted zone name
+    Default: /Foundation/Internal/Route53/HostedZone/Name
+    Type: String
+Resources:
+  ExternalZone:
+    Type: 'AWS::Route53::HostedZone'
+    Properties:
+      Name: !Ref ExternalZoneName
+  # Since the internalzone takes precedence, we can skip the above indirection
+  InternalZone:
+    Type: 'AWS::Route53::HostedZone'
+    Properties:
+      Name: !Ref InternalZoneName
+      VPCs: 
+        - VPCId: !Ref Vpc
+          VPCRegion: !Ref AWS::Region
+  ParamExternalHostedZone:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The id of the external hosted zone
+      Name: !Sub '/${Env}${xExternalHostedZone}'
+      Value: !Ref ExternalZone
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamInternalHostedZone:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The id of the internal hosted zone
+      Name: !Sub '/${Env}${xInternalHostedZone}'
+      Value: !Ref InternalZone
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamExternalHostedZoneName:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The dns name associated with the external hosted zone
+      Name: !Sub '/${Env}${xExternalHostedZoneName}'
+      Value: !Ref ExternalZoneName
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamInternalHostedZoneName:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The dns name associated with the internal hosted zone
+      Name: !Sub '/${Env}${xInternalHostedZoneName}'
+      Value: !Ref InternalZoneName
+      Type: String
+      Tags:
+        Environment: !Ref Env

@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This template creates the objects required to allow communications
+  between the simulated remote site and a deployed foundations environment.
+Parameters:
+  Env:
+    Description: The environment to which the new simulated Active Directory
+      environment will be connected.  This environment must have the
+      foundation or equivalent module deployed with an appropriate VPC.
+    Type: String
+  RemoteCidrBlock:
+    Type: AWS::SSM::Parameter::Value<String>
+  TransitGatewayId:
+    Type: AWS::SSM::Parameter::Value<String>
+  TransitGatewayRouteTable:
+    Type: AWS::SSM::Parameter::Value<String>
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  Subnet1:
+    Type: AWS::EC2::Subnet::Id
+  Subnet2:
+    Type: AWS::EC2::Subnet::Id
+  Subnet1RouteTable:
+    Type: String
+  Subnet2RouteTable:
+    Type: String
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup::Id
+Resources:
+  # Allow all traffic from the connected VPC on all ports to the simulated
+  # domain controllers.  These permissive rules are implemented because this
+  # is a simulated environment.
+  DomainControllerSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow traffic from external VPC
+      GroupId: !Ref SecurityGroup
+      IpProtocol: -1
+      FromPort: -1
+      ToPort: -1
+      CidrIp: !Ref RemoteCidrBlock
+  # Connect the VPC to the transit gateway
+  TransitGatewayAttachment:
+    Type: AWS::EC2::TransitGatewayAttachment
+    Properties:
+      SubnetIds:
+        - !Ref Subnet1
+        - !Ref Subnet2
+      TransitGatewayId: !Ref TransitGatewayId
+      VpcId: !Ref VpcId
+  # Associate the route table with the TG and attachment
+  TransitGatewayRouteTableAssociation:
+    Type: AWS::EC2::TransitGatewayRouteTableAssociation
+    Properties:
+      TransitGatewayAttachmentId: !Ref TransitGatewayAttachment
+      TransitGatewayRouteTableId: !Ref TransitGatewayRouteTable
+    DependsOn:
+      - TransitGatewayAttachment
+  # Propogate the route through the transitgateway / vpc
+  TransitGatewayRouteTablePropagation:
+    Type: AWS::EC2::TransitGatewayRouteTablePropagation
+    Properties:
+      TransitGatewayAttachmentId: !Ref TransitGatewayAttachment
+      TransitGatewayRouteTableId: !Ref TransitGatewayRouteTable
+    DependsOn:
+      - TransitGatewayAttachment
+  # Route traffic to the *other* VPC through the transit gateway
+  TGNatRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: !Ref RemoteCidrBlock
+      RouteTableId: !Ref Subnet1RouteTable
+      TransitGatewayId: !Ref TransitGatewayId
+    DependsOn:
+      - TransitGatewayAttachment
+  TGNatRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: !Ref RemoteCidrBlock
+      RouteTableId: !Ref Subnet2RouteTable
+      TransitGatewayId: !Ref TransitGatewayId
+    DependsOn:
+      - TransitGatewayAttachment

@@ -1,0 +1,117 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  Env:
+    Description: The environment associated with this network, i.e. DEV or PRD.
+    Type: String
+    Default: ENV
+  Scheme:
+    Description: The scheme to be associated with the LB
+    Type: String
+    Default: internal
+    AllowedValues:
+      - internal
+      - internet-facing
+  ListenerProtocol:
+    Description: The protocol exposed to the customers
+    Type: String
+    Default: TLS
+  TargetProtocol:
+    Description: The protocol to which traffic is forwarded
+    Type: String
+    Default: TLS
+  ListenerPort:
+    Description: The port exposed to the customers
+    Type: String
+    Default: 636
+  TargetPort:
+    Description: The port to which traffic is forwarded
+    Type: String
+    Default: 636
+  HostedZone:
+    Description: The SSM parameter containing the hosted zone
+    Type: AWS::SSM::Parameter::Value<AWS::Route53::HostedZone::Id>
+    Default: /ENV/Foundation/External/Route53/HostedZone/Id
+  DnsName:
+    Description: The SSM parameter containing the dns name
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/WORKLOAD/Specifier/Route53/Recordset/Name
+  CertificateArn:
+    Description: The SSM parameter containing the certificate arn
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/WORKLOAD/SPECIFIER/CertificateManager/Certificate/Arn
+  Vpc:
+    Description: The SSM parameter containing the id for the AWS VPC
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
+    Default: /ENV/Foundation/EC2/VPC/Id
+  AvailabilityZone1:
+    Description: The SSM parameter containing the first availability zone.
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::AvailabilityZone::Name>
+    Default: /ENV/Foundation/1/EC2/AvailabilityZone/Name
+  AvailabilityZone2:
+    Description: The SSM parameter containing the second availability zone.
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::AvailabilityZone::Name>
+    Default: /ENV/Foundation/2/EC2/AvailabilityZone/Name
+  Subnet1:
+    Description: The subnet that will house the first LB connection
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+    Default: /ENV/Foundation/Private/1/EC2/Subnet/Id
+  Subnet2:
+    Description: The subnet that will house the second LB connection
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+    Default: /ENV/Foundation/Private/2/EC2/Subnet/Id
+  TargetIp1:
+    Description: The IP for the first target server
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/ActiveDirectory/DomainController/Remote/1/IpAddress
+  TargetIp2:
+    Description: The IP for the second target server
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/ActiveDirectory/DomainController/Remote/2/IpAddress
+Resources:
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      IpAddressType: ipv4
+      Type: network
+      Scheme: !Ref Scheme
+      Subnets:
+        - !Ref Subnet1
+        - !Ref Subnet2
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: !Ref TargetPort
+      Protocol: !Ref TargetProtocol
+      TargetType: ip
+      Targets:
+        - Id: !Ref TargetIp1
+          Port: !Ref TargetPort
+          AvailabilityZone: !Ref AvailabilityZone1
+        - Id: !Ref TargetIp2
+          Port: !Ref TargetPort
+          AvailabilityZone: !Ref AvailabilityZone2
+      VpcId: !Ref Vpc
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      Certificates:
+        - CertificateArn: !Ref CertificateArn
+      DefaultActions:
+        - TargetGroupArn: !Ref TargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: !Ref ListenerPort
+      Protocol: !Ref ListenerProtocol
+  DnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      AliasTarget:
+        DNSName: !GetAtt
+          - LoadBalancer
+          - DNSName
+        HostedZoneId: !GetAtt
+          - LoadBalancer
+          - CanonicalHostedZoneID
+      HostedZoneId: !Ref HostedZone
+      Name: !Ref DnsName
+      Type: A

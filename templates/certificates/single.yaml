@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  Env:
+    Type: String
+    Default: ENV
+  Subdomain:
+    Description: The subdomain for this certificate, i.e. sso or ldap-dev
+    Type: String
+  ExternalZoneName:
+    Description: The SSM parameter containing external zone domain
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/Foundation/External/Route53/HostedZone/Name
+  InternalZoneName:
+    Description: The SSM parameter containing internal zone domain
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ENV/Foundation/Internal/Route53/HostedZone/Name
+  xExternalName:
+    Description: The external recordset name associated with this certificate
+    Default: /WORKLOAD/SPECIFIER/External/Route53/RecordSet/Name
+    Type: String
+  xInternalName:
+    Description: The internal recordset name associated with this certificate
+    Default: /WORKLOAD/SPECIFIER/Internal/Route53/RecordSet/Name
+    Type: String
+  xCertificateArn:
+    Description: The string indicating the certificate Arn
+    Default: /WORKLOAD/SPECIFIER/CertificateManager/Certificate/Arn
+    Type: String
+Resources:
+  # Certificates are typically associated with the INTERNAL domain, which 
+  # is the domain that should eventually be shown in the user's browser.
+  # The external domain is sometimes used in combination with CNAME entries
+  # to have a level of indirection.
+  Cert:
+    Type: 'AWS::CertificateManager::Certificate'
+    Properties:
+      ValidationMethod: DNS
+      DomainName: !Sub '${Subdomain}.${InternalZoneName}'
+  ParamExternalDomain:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The external domain associated with the certificate, this
+        may be different than what is shown in the browser (the *internal* 
+        domain).  If thus configured, a CNAME entry must be added in the
+        authoritative DNS for the internal domain.
+      Name: !Sub '/${Env}${xExternalName}'
+      Value: !Sub '${Subdomain}.${ExternalZoneName}'
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamInternalDomain:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The internal domain associated with the certificate, this
+        should always match what is shown in the user's browser or accessed
+        via api.
+      Name: !Sub '/${Env}${xInternalName}'
+      Value: !Sub '${Subdomain}.${InternalZoneName}'
+      Type: String
+      Tags:
+        Environment: !Ref Env
+  ParamCertificateArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The arn identifier associated with the certificate
+      Name: !Sub '/${Env}${xCertificateArn}'
+      Value: !Ref Cert
+      Type: String
+      Tags:
+        Environment: !Ref Env
