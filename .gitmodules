@@ -1,7 +1,6 @@
 [submodule "submodules/aws-refarch-shibboleth"]
 	path = submodules/aws-refarch-shibboleth
 	url = https://github.com/aws-samples/aws-refarch-shibboleth.git
-	branch = pre-launch-changes
 [submodule "submodules/quickstart-microsoft-activedirectory"]
 	path = submodules/quickstart-microsoft-activedirectory
 	url = https://github.com/aws-quickstart/quickstart-microsoft-activedirectory.git
