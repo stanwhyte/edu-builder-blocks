@@ -42,10 +42,9 @@ In order to complete the deployment of all workloads listed below, ensure the fo
 1. [Install](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) and [configure](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) the AWS command line interface.
 1. Clone the EDU Builder Blocks project `git clone https://github.com/aws-samples/edu-builder-blocks.git` to establish a local copy of the project and change into the correct directory `cd edu-builder-blocks`.
 1. [Create](https://docs.aws.amazon.com/AmazonS3/latest/gsg/CreatingABucket.html) an S3 bucket in the region of choice.  
-1. Search and replace the BUCKET string in the current file (README.md) with the new bucket name `sed -i '' 's/BUCKET/my-bucket-name/' README.md`.
-1. Search and replace the REGION string in the current file (README.md) with the selected region `sed -i '' 's/REGION/us-east-1/' README.md`.
+1. Search and replace the BUCKET string in the current file (README.md) with the new bucket name `sed -i '' 's/BUCKET/my-bucket-name/g' README.md`.
+1. Search and replace the REGION string in the current file (README.md) with the selected region `sed -i '' 's/REGION/us-east-1/g' README.md`.
 1. Use the `./scripts/build-submodules.sh -d .` script to update all of the submodules to the latest version and prepare them for deployment.
-1. Use the `./scripts/s3-sync.sh -d . -b BUCKET -e DEV` script to synchronize the current project with the S3 bucket.
 
 
 Development (DEV)
@@ -53,6 +52,7 @@ Development (DEV)
 
 The development environment is intended to be easily destroyed and recreated.  Further, it depends on a simulated remote site deployed in AWS to complement the normal AWS infrastructure.  As such the instructions below vary slightly from the higher level environments.
 
+1. Use the `./scripts/s3-sync.sh -d . -b BUCKET -e DEV` script to synchronize the current project with the S3 bucket.
 1. Deploy the [Bootstrap](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https%3A%2F%2FBUCKET.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Fbootstrap.yaml&stackName=dev-bootstrap&param_BucketName=BUCKET&param_BucketRegion=REGION) stack to populate the SSM Parameter Store with the location of the CloudFormation templates and supporting code.
 1. Deploy the [Foundation](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https%3A%2F%2FBUCKET.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Ffoundation.yaml&stackName=dev-foundation) stack and complete manual configuration changes as appropriate:
     * Configure the DNS authoritative name server for the external zone to delegate responsibility to AWS.
