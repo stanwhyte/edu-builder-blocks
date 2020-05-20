@@ -36,14 +36,15 @@ Prerequisites
 
 In order to complete the deployment of all workloads listed below, ensure the following prerequisites have been completed:
 
-1. Select the desired region to be used for all regional workload deployments, using the [regional product services](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) table to ensure all desired workloads are available.  It is recommended initial testing be performed in the `us-east-1` region as it has all services available. 
+1. The commands and scripts below assume a Unix-based operating system.
+1. Select the desired region to be used for all regional workload deployments, using the [regional product services](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) table to ensure all desired services are available.  It is recommended initial testing be performed in the `us-east-1` region as it has all services available. 
 1. [Create](https://docs.aws.amazon.com/IAM/latest/UserGuide/getting-started_create-admin-group.html) a user with administrative privileges.
 1. [Install](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) and [configure](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) the AWS command line interface.
 1. Clone the EDU Builder Blocks project `git clone https://github.com/aws-samples/edu-builder-blocks.git` to establish a local copy of the project and change into the correct directory `cd edu-builder-blocks`.
 1. [Create](https://docs.aws.amazon.com/AmazonS3/latest/gsg/CreatingABucket.html) an S3 bucket in the region of choice.  
 1. Search and replace the BUCKET string in the current file (README.md) with the new bucket name `sed -i '' 's/BUCKET/my-bucket-name/' README.md`.
 1. Search and replace the REGION string in the current file (README.md) with the selected region `sed -i '' 's/REGION/us-east-1/' README.md`.
-1. Use the `./scripts/build-submodules.sh -d .` script to update all of the submodules to the latest version and sync them with the `external/` folder.
+1. Use the `./scripts/build-submodules.sh -d .` script to update all of the submodules to the latest version and prepare them for deployment.
 1. Use the `./scripts/s3-sync.sh -d . -b BUCKET -e DEV` script to synchronize the current project with the S3 bucket.
 
 
