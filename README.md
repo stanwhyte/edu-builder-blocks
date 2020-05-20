@@ -37,6 +37,7 @@ Prerequisites
 In order to complete the deployment of all workloads listed below, ensure the following prerequisites have been completed:
 
 1. The commands and scripts below assume a Unix-based operating system.
+1. [Create](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html#having-ec2-create-your-key-pair) a new keypair if necessary to allow access to any EC2 instances subsequently created.
 1. Select the desired region to be used for all regional workload deployments, using the [regional product services](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) table to ensure all desired services are available.  It is recommended initial testing be performed in the `us-east-1` region as it has all services available. 
 1. [Create](https://docs.aws.amazon.com/IAM/latest/UserGuide/getting-started_create-admin-group.html) a user with administrative privileges.
 1. [Install](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) and [configure](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) the AWS command line interface.
