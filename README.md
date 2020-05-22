@@ -37,15 +37,15 @@ Prerequisites
 In order to complete the deployment of all workloads listed below, ensure the following prerequisites have been completed:
 
 1. The commands and scripts below assume a Unix-based operating system.
+1. [Create](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html#having-ec2-create-your-key-pair) a new keypair if necessary to allow access to any EC2 instances subsequently created.
 1. Select the desired region to be used for all regional workload deployments, using the [regional product services](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) table to ensure all desired services are available.  It is recommended initial testing be performed in the `us-east-1` region as it has all services available. 
 1. [Create](https://docs.aws.amazon.com/IAM/latest/UserGuide/getting-started_create-admin-group.html) a user with administrative privileges.
 1. [Install](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) and [configure](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) the AWS command line interface.
 1. Clone the EDU Builder Blocks project `git clone https://github.com/aws-samples/edu-builder-blocks.git` to establish a local copy of the project and change into the correct directory `cd edu-builder-blocks`.
 1. [Create](https://docs.aws.amazon.com/AmazonS3/latest/gsg/CreatingABucket.html) an S3 bucket in the region of choice.  
-1. Search and replace the cfn-awsexpo string in the current file (README.md) with the new bucket name `sed -i '' 's/cfn-awsexpo/my-bucket-name/' README.md`.
-1. Search and replace the us-west-2 string in the current file (README.md) with the selected region `sed -i '' 's/us-west-2/us-east-1/' README.md`.
+1. Search and replace the BUCKET string in the current file (README.md) with the new bucket name `sed -i '' 's/BUCKET/my-bucket-name/g' README.md`.
+1. Search and replace the REGION string in the current file (README.md) with the selected region `sed -i '' 's/REGION/us-east-1/g' README.md`.
 1. Use the `./scripts/build-submodules.sh -d .` script to update all of the submodules to the latest version and prepare them for deployment.
-1. Use the `./scripts/s3-sync.sh -d . -b cfn-awsexpo -e DEV` script to synchronize the current project with the S3 bucket.
 
 
 Development (DEV)
@@ -53,13 +53,15 @@ Development (DEV)
 
 The development environment is intended to be easily destroyed and recreated.  Further, it depends on a simulated remote site deployed in AWS to complement the normal AWS infrastructure.  As such the instructions below vary slightly from the higher level environments.
 
-1. Deploy the [Bootstrap](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/quickcreate?templateUrl=https%3A%2F%2Fcfn-awsexpo.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Fbootstrap.yaml&stackName=dev-bootstrap&param_BucketName=cfn-awsexpo&param_BucketRegion=us-west-2) stack to populate the SSM Parameter Store with the location of the CloudFormation templates and supporting code.
-1. Deploy the [Foundation](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/quickcreate?templateUrl=https%3A%2F%2Fcfn-awsexpo.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Ffoundation.yaml&stackName=dev-foundation) stack and complete manual configuration changes as appropriate:
+1. Use the `./scripts/s3-sync.sh -d . -b BUCKET -e DEV` script to synchronize the current project with the S3 bucket.
+1. Deploy the [Bootstrap](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https%3A%2F%2FBUCKET.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Fbootstrap.yaml&stackName=dev-bootstrap&param_BucketName=BUCKET&param_BucketRegion=REGION) stack to populate the SSM Parameter Store with the location of the CloudFormation templates and supporting code.
+1. Deploy the [Foundation](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https%3A%2F%2FBUCKET.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Ffoundation.yaml&stackName=dev-foundation) stack and complete manual configuration changes as appropriate:
     * Configure the DNS authoritative name server for the external zone to delegate responsibility to AWS.
-1. Deploy the [Simulated Active Directory](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/quickcreate?templateUrl=https%3A%2F%2Fcfn-awsexpo.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Factive-directory-simulated.yaml&stackName=dev-ad-simulated) stack to simulate the on-premises Active Directory environment.
-1. Deploy the [Active Directory](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/quickcreate?templateUrl=https%3A%2F%2Fcfn-awsexpo.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Factive-directory.yaml&stackName=dev-ad) stack and optionally deploy the [Remote Desktop Portal (RDP)](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/quickcreate?templateUrl=https%3A%2F%2Fcfn-awsexpo.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Frdp.yaml&stackName=dev-rdp) stack, which should be removed after completion of testing activities.  Complete manual configuration tasks as required:
+1. Deploy the [Simulated Active Directory](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https%3A%2F%2FBUCKET.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Factive-directory-simulated.yaml&stackName=dev-ad-simulated) stack to simulate the on-premises Active Directory environment.
+1. Deploy the [Active Directory](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https%3A%2F%2FBUCKET.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Factive-directory.yaml&stackName=dev-ad) stack and optionally deploy the [Remote Desktop Portal (RDP)](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https%3A%2F%2FBUCKET.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Frdp.yaml&stackName=dev-rdp) stack, which should be removed after completion of testing activities.  Complete manual configuration tasks as required:
     * If required, create CNAME entries in appropriate DNS locations to complete external certificate creation for AD LDAP certificate
-1. Deploy the [Shibboleth](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/quickcreate?templateUrl=https%3A%2F%2Fcfn-awsexpo.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Fshibboleth.yaml&stackName=dev-shib) stack and complete manual deployment tasks as appropriate:
+    * Execute the `./scripts/create-ad-connector -e DEV` script to create an Active Directory Connector pointing to the two domain controllers.  Note, this step is required for Workspaces and Appstream, but not for the basic Shibboleth use cases.
+1. Deploy the [Shibboleth](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https%3A%2F%2FBUCKET.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Fshibboleth.yaml&stackName=dev-shib) stack and complete manual deployment tasks as appropriate:
     * If required, create CNAME entries in appropriate DNS locations to complete external certificate creation for the SSO certificate
     * Increase number of required Shibboleth desired tasks as [documented](external/aws-refarch-shibboleth/README.md)
 1. Complete configuration instructions to enable SSO and establish Shibboleth as the trusted IDP.  Instructions for these tasks may be found [here](external/aws-refarch-shibboleth/README.md).
@@ -236,4 +238,5 @@ License
 =======
 
 This library is licensed under the MIT-0 License. See the LICENSE file.
+
 
