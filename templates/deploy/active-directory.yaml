@@ -25,6 +25,7 @@ Metadata:
           - InstanceType
           - KeyPairName
           - WINFULLBASE
+          - CreateWorkspacesDefaultRole
     ParameterLabels:
       InstanceType:
         default: Instance Type for AWS Domain Controllers
@@ -50,6 +51,8 @@ Metadata:
         default: Remote Domain Controller IP 2
       Env:
         default: Environment Name
+      CreateWorkspacesDefaultRole:
+        default: Create Workspaces Default Role
       CfnUrl:
         default: CloudFormation S3 Url SSM Parameter
 Parameters:
@@ -68,6 +71,15 @@ Parameters:
       scripts and other components.
     Type: AWS::SSM::Parameter::Value<String>
     Default: /DEV/Bootstrap/CloudFormation/S3/Bucket/Url
+  CreateWorkspacesDefaultRole:
+    Description: If set to true, create the workspaces default role.  This role
+      is required for Workspaces to be deployed, but only one of them is 
+      necessary per AWS account.
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
   TargetLocation:
     Description: When set to Remote,will forward traffic to the remote / on-
       premises domain controllers.  When set to AWS,will provision new domain 
@@ -216,6 +228,8 @@ Mappings:
       LDAPCertArn: /ActiveDirectory/LDAP/CertificateManager/Certificate/Arn
 
 Conditions:
+  CreateWorkspacesRole:
+    !Equals [true, !Ref CreateWorkspacesDefaultRole]
   IsRemote:
     !Equals [Remote, !Ref TargetLocation]
   IsAWS:
@@ -667,3 +681,25 @@ Resources:
     DependsOn:
       - DomainController1
       - DomainController2
+
+
+  # Create the default workspaces role that allows the workspaces service
+  # to assume a role granting the ability to do workspace administration.
+  # The role name is required as below, and only one of these needs to exist
+  # for each AWS account.
+  DefaultRole:
+    Type: AWS::IAM::Role
+    Condition: CreateWorkspacesRole
+    Properties:
+      RoleName: workspaces_DefaultRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonWorkSpacesServiceAccess
+        - arn:aws:iam::aws:policy/AmazonWorkSpacesSelfServiceAccess
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - workspaces.amazonaws.com
+            Action: sts:AssumeRole
