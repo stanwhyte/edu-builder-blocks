@@ -18,7 +18,7 @@ Resources:
     Type: AWS::WorkSpaces::Workspace
     Properties:
       UserName: DomainAdmin
-      BundleId: wsb-ftkjdlgks
+      BundleId: wsb-ddkxkghsv
       DirectoryId: !Ref DirectoryId
       Tags:
         - 
