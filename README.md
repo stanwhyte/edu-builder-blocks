@@ -69,6 +69,9 @@ The development environment is intended to be easily destroyed and recreated.  F
     * Increase number of required Shibboleth desired tasks as [documented](external/aws-refarch-shibboleth/README.md)
 1. Complete configuration instructions to enable SSO and establish Shibboleth as the trusted IDP.  Instructions for these tasks may be found [here](external/aws-refarch-shibboleth/README.md).
 1. Deploy the [Workspaces](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https%3A%2F%2FBUCKET.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Fworkspaces.yaml&stackName=dev-workspaces) stack and complete manual steps to connect to the Workspaces instance:
+    * In the AWS console, navigate to the WorkSpaces -> Workspaces tab.
+    * Click the checkbox next to the new Workspace, and the Actions -> Invite User.
+    * Follow the instructions in the popup to connect to your new Workspace.
 
 
 
