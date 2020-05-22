@@ -10,16 +10,19 @@ Note that the CloudFormation templates provided depend on SSM Parameter referenc
 In each of the environments, a Shibboleth workload is deployed, which interacts with a cluster of Active Directory domain controllers that are joined to the Active Directory forest located in the remote site (on-premises).
 
 ```
-        ╔AWS══════════════════╗  ╔Remote╗
-┏━━━━┓  ║ ┏━━━━━━━━━━┓   ┏━━┓ ║  ║ ┏━━┓ ║
+        ╔AWS══════════════════╗  
+        ║ ┏━━━━━━━┓           ║   
+   ╭╌╌╌╌╫╌┨AWS SSO┃           ║
+   ╎    ║ ┗━━━━━━━┛           ║  ╔Remote╗
+┏━━┷━┓  ║ ┏━━━━━━━━━━┓   ┏━━┓ ║  ║ ┏━━┓ ║
 ┃User┠╌╌╫╌┨Shibboleth┠╌╌╌┨AD┠╌╫╌╌╫╌┨AD┃ ║
 ┗━━┯━┛  ║ ┗━━━━━━━━━━┛   ┗┯━┛ ║  ║ ┗━━┛ ║
    ╎    ║ ┏━━━┓           ╎   ║  ╚══════╝
-   ├╌╌╌╌╫╌┨RDP┠╌╌╌╌╌╌╌╌╌╌╌╯   ║
-   ╎    ║ ┗━━━┛               ║
-   ╎    ║ ┏━━━━━━━┓           ║
-   ╰╌╌╌╌╫╌┨AWS SSO┃           ║
-        ║ ┗━━━━━━━┛           ║
+   ├╌╌╌╌╫╌┨RDP┠╌╌╌╌╌╌╌╌╌╌╌┤   ║
+   ╎    ║ ┗━━━┛           ╎   ║
+   ╎    ║ ┏━━━━━━━━━━┓    ╎   ║
+   ╰╌╌╌╌╫╌┨Workspaces┠╌╌╌╌╯   ║
+        ║ ┗━━━━━━━━━━┛        ║
         ╚═════════════════════╝
 ```
 
@@ -43,7 +46,7 @@ In order to complete the deployment of all workloads listed below, ensure the fo
 1. [Install](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) and [configure](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) the AWS command line interface.
 1. Clone the EDU Builder Blocks project `git clone https://github.com/aws-samples/edu-builder-blocks.git` to establish a local copy of the project and change into the correct directory `cd edu-builder-blocks`.
 1. [Create](https://docs.aws.amazon.com/AmazonS3/latest/gsg/CreatingABucket.html) an S3 bucket in the region of choice.  
-1. Search and replace the BUCKET string in the current file (README.md) with the new bucket name `sed -i '' 's/BUCKET/TBCK/2; s/BUCKET/my-bucket-name/g; s/TBCK/BUCKET/g' README.md`
+1. Search and replace the BUCKET string in the current file (README.md) with the new bucket name `sed -i '.bak' 's/BUCKET/TBCK/2; s/BUCKET/my-bucket-name/g; s/TBCK/BUCKET/g' README.md`
 1. Search and replace the REGION string in the current file (README.md) with the selected region `sed -i '' 's/REGION/TRGN/2; s/REGION/us-east-1/g; s/TRGN/REGION/g' README.md`
 1. Use the `./scripts/build-submodules.sh -d .` script to update all of the submodules to the latest version and prepare them for deployment.
 
@@ -197,6 +200,25 @@ The RDP workload is a temporary workload that may be deployed to test that the c
    ╎    ║ ┏━━━┓           ╎   ║
    ╰╌╌╌╌╫╌┨RDP┠╌╌╌╌╌╌╌╌╌╌╌╯   ║
         ║ ┗━━━┛               ║
+        ╚═════════════════════╝
+```
+
+
+AWS Workspaces
+--------------
+
+Amazon WorkSpaces is a managed, secure Desktop-as-a-Service (DaaS) solution. You can use Amazon WorkSpaces to provision either Windows or Linux desktops in just a few minutes and quickly scale to provide thousands of desktops to workers across the globe. You can pay either monthly or hourly, just for the WorkSpaces you launch, which helps you save money when compared to traditional desktops and on-premises VDI solutions. Amazon WorkSpaces helps you eliminate the complexity in managing hardware inventory, OS versions and patches, and Virtual Desktop Infrastructure (VDI), which helps simplify your desktop delivery strategy. With Amazon WorkSpaces, your users get a fast, responsive desktop of their choice that they can access anywhere, anytime, from any supported device.
+
+In this deployment of AWS Workspaces, a single workspaces is provisioned and assigned to a user.  Note that this workload requires the AD Connector to be provisioned as part of the Active Directory workload, and also depends on the Foundation workload for proper operation.
+
+```
+        ╔AWS══════════════════╗
+┏━━━━┓  ║                     ║
+┃User┃  ║                     ║
+┗━━┯━┛  ║                     ║
+   ╎    ║ ┏━━━━━━━━━━┓    ╎   ║
+   ╰╌╌╌╌╫╌┨Workspaces┠╌╌╌╌╯   ║
+        ║ ┗━━━━━━━━━━┛        ║
         ╚═════════════════════╝
 ```
 
