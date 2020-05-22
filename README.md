@@ -43,8 +43,8 @@ In order to complete the deployment of all workloads listed below, ensure the fo
 1. [Install](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) and [configure](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) the AWS command line interface.
 1. Clone the EDU Builder Blocks project `git clone https://github.com/aws-samples/edu-builder-blocks.git` to establish a local copy of the project and change into the correct directory `cd edu-builder-blocks`.
 1. [Create](https://docs.aws.amazon.com/AmazonS3/latest/gsg/CreatingABucket.html) an S3 bucket in the region of choice.  
-1. Search and replace the BUCKET string in the current file (README.md) with the new bucket name `sed -i '' 's/BUCKET/my-bucket-name/g' README.md`.
-1. Search and replace the REGION string in the current file (README.md) with the selected region `sed -i '' 's/REGION/us-east-1/g' README.md`.
+1. Search and replace the BUCKET string in the current file (README.md) with the new bucket name `sed -i '' 's/BUCKET/TBCK/2; s/BUCKET/my-bucket-name/g; s/TBCK/BUCKET/g' README.md`
+1. Search and replace the REGION string in the current file (README.md) with the selected region `sed -i '' 's/REGION/TRGN/2; s/REGION/us-east-1/g; s/TRGN/REGION/g' README.md`
 1. Use the `./scripts/build-submodules.sh -d .` script to update all of the submodules to the latest version and prepare them for deployment.
 
 
