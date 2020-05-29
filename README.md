@@ -66,8 +66,8 @@ The development environment is intended to be easily destroyed and recreated.  F
     * Execute the `./scripts/create-ad-connector.sh -e DEV` script to create an Active Directory Connector pointing to the two domain controllers.  Note, this step is required for Workspaces and Appstream, but not for the basic Shibboleth use cases.
 1. Deploy the [Shibboleth](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https%3A%2F%2FBUCKET.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Fshibboleth.yaml&stackName=dev-shib) stack and complete manual deployment tasks as appropriate:
     * If required, create CNAME entries in appropriate DNS locations to complete external certificate creation for the SSO certificate
-    * Increase number of required Shibboleth desired tasks as [documented](external/aws-refarch-shibboleth/README.md)
-1. Complete configuration instructions to enable SSO and establish Shibboleth as the trusted IDP.  Instructions for these tasks may be found [here](external/aws-refarch-shibboleth/README.md).
+    * Increase number of required Shibboleth desired tasks as [documented](https://github.com/aws-samples/aws-refarch-shibboleth#update-the-desired-task-count)
+1. Complete configuration instructions to enable SSO and establish Shibboleth as the trusted IDP.  Instructions for these tasks may be found [here](https://github.com/aws-samples/aws-refarch-shibboleth#adding-aws-sso-support-to-your-idp).
 1. Deploy the [Workspaces](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https%3A%2F%2FBUCKET.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Fworkspaces.yaml&stackName=dev-workspaces) stack and complete manual steps to connect to the Workspaces instance:
     * In the AWS console, navigate to the WorkSpaces -> Workspaces tab.
     * Click the checkbox next to the new Workspace, and the Actions -> Invite User.
