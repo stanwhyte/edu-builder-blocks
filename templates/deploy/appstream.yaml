@@ -1,0 +1,277 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  Env:
+    Description: The environment associated with this network (i.e. DEV, PRD)
+    Type: String
+    Default: DEV
+    AllowedValues:
+      - DEV
+      - TST
+      - STG
+      - PRD
+
+  DirectoryId:
+    Description: The SSM parameter containing the directory identifier
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /DEV/ActiveDirectory/Domain/DirectoryService/Connector/Id
+
+  Vpc:
+    Description: The SSM parameter containing the id for the AWS VPC
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
+    Default: /DEV/Foundation/EC2/VPC/Id
+
+  PrivateSubnet1:
+    Description: The SSM parameter containing the first subnet to be used
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+    Default: /DEV/Foundation/NAT/1/EC2/Subnet/Id
+
+  PrivateSubnet2:
+    Description: The SSM parameter containing the second subnet to be used
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+    Default: /DEV/Foundation/NAT/2/EC2/Subnet/Id
+
+  SoftwareS3BucketName:
+    Description: Globally-unique DNS name for S3 bucket for storing software 
+      to install via Image Builder
+    Type: String
+    Default: dev-example-appstream-software
+    AllowedPattern: ^[a-z][a-z0-9\-]+$
+
+  FleetInstanceType:
+    Description: The instance type to use when launching both fleet and image 
+      builder instances
+    Type: String
+    Default: stream.standard.medium
+    AllowedValues:
+      - stream.standard.medium
+      - stream.standard.large
+      - stream.compute.large
+      - stream.compute.xlarge
+      - stream.compute.2xlarge
+      - stream.compute.4xlarge
+      - stream.compute.8xlarge
+      - stream.memory.large
+      - stream.memory.xlarge
+      - stream.memory.2xlarge
+      - stream.memory.4xlarge
+      - stream.memory.8xlarge
+      - stream.memory.z1d.large
+      - stream.memory.z1d.xlarge
+      - stream.memory.z1d.2xlarge
+      - stream.memory.z1d.3xlarge
+      - stream.memory.z1d.6xlarge
+      - stream.memory.z1d.12xlarge
+      - stream.graphics-design.large
+      - stream.graphics-design.xlarge
+      - stream.graphics-design.2xlarge
+      - stream.graphics-design.4xlarge
+      - stream.graphics-desktop.2xlarge
+      - stream.graphics-pro.4xlarge
+      - stream.graphics-pro.8xlarge
+      - stream.graphics-pro.16xlarge
+
+  DesiredFleetInstances:
+    Description: The Desired Compute Capacity for the Fleet
+    Type: Number
+    Default: 2
+
+  FleetTypeSetting:
+    Description: Whether the AppStream fleet will be always-on or on-demand
+    Type: String
+    Default: ON_DEMAND
+    AllowedValues:
+      - ON_DEMAND
+      - ALWAYS_ON
+
+  SessionRedirectURL:
+    Description: The URL that users are redirected to after their streaming 
+      session ends
+    Type: String
+    Default: http://www.amazon.com
+
+  # # As an alternative, you can specify the ARN of the base image instead of
+  # # the friendly name.  You must do one or the other, but not both.
+  # ImageBuilderBaseImage:
+  #   Description: The ARN of the public, private, or shared image to use
+  #   Type: String
+  #   AllowedPattern: ^arn:aws(?:\-cn|\-iso\-b|\-iso|\-us\-gov)?:[A-Za-z0-9][A-Za-z0-9_/.-]{0,62}:[A-Za-z0-9_/.-]{0,63}:[A-Za-z0-9_/.-]{0,63}:[A-Za-z0-9][A-Za-z0-9:_/+=,@.\\-]{0,1023}$
+
+  # ImageBuilderBaseImageName:
+  #   Description: The name of the image used to create the image builder. Available base image listing is found on docs.aws.amazon.com/appstream2/latest/developerguide/base-image-version-history.html
+  #   Type: String
+  #   Default: AppStream-WinServer2019-12-12-2019
+  #   MinLength: 1
+
+  # Just like the base image for the image builder, you can specify the image
+  # for the fleet using either the name or the ARN.
+  FleetImageName:
+    Description: The name of the image used for the fleet. This can be changed 
+      without service interruption once the Image Builder has been used.
+    Type: String
+    Default: Amazon-AppStream2-Sample-Image-02-04-2019
+    MinLength: 1
+
+  # Email address for the test user account
+  TestUserEmail:
+    Description: Email address for the test user
+    Type: String
+    MinLength: 5
+    AllowedPattern: ^([a-zA-Z0-9_\-\.\+]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-Z]{2,5})$
+    ConstraintDescription: Must be a valid email address format.
+
+Resources:
+  # S3 bucket for storing software installation images
+  SoftwareS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref SoftwareS3BucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Suspended
+      Tags:
+        - Key: Environment
+          Value: !Ref Env
+
+  # TODO: Put in flag for creating the role, only need one
+  # IAM Role for AppStream 2.0 to use, necessary to have one (and only one)
+  AmazonAppStreamServiceAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AmazonAppStreamServiceAccess
+      Path: /service-role/
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - appstream.amazonaws.com
+            Action: sts:AssumeRole  
+
+  # IAM Role for AppStream 2.0 to use for accessing S3 Bucket of installers
+  S3AccessRole:
+    Type: AWS::IAM::Role
+    DependsOn: SoftwareS3Bucket
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - appstream.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: SoftwareS3BucketRead
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                - s3:Get*
+                - s3:List*
+                Resource: !Sub 'arn:aws:s3:::${SoftwareS3Bucket}'
+      Description: IAM Role for AppStream 2.0 to access S3 bucket with software 
+
+# # Define AppStream 2.0 Resources for image builder, fleet and stack
+#   ImageBuilder:
+#     Type: AWS::AppStream::ImageBuilder
+#     Properties:
+#       Description: ImageBuilder instance for AS20 stack
+#       DisplayName: ImageBuilder_Standard_Large
+#       ImageName: !Ref ImageBuilderBaseImageName
+#       InstanceType: !Ref FleetInstanceType
+#       Name: !Join
+#         - ''
+#         - - !Ref Env
+#           - ImageBuilder
+#       Tags:
+#         - Key: StandardPlay
+#           Value: AppStream
+#       VpcConfig:
+#         SecurityGroupIds:
+#           - !Ref NoIngressSecurityGroup
+#         SubnetIds:
+#           - !Ref PrivateSubnet1
+
+  AppStreamSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${Env}AppstreamSecurityGroup
+      GroupDescription: "Security group used for appstream deployment"
+      VpcId: !Ref Vpc
+
+# Fleet is first created with a default "Blank" image unless the Image Builder
+# has been used to create a "golden" image.  This template parameter can be
+# updated after the Image Builder has been used
+  MyFleet:
+    Type: AWS::AppStream::Fleet
+    DependsOn: AmazonAppStreamServiceAccessRole
+    Properties:
+      ComputeCapacity:
+        DesiredInstances: !Ref DesiredFleetInstances
+      Description: !Sub 'AppStream 2.0 Fleet'
+      DisplayName: !Sub '${Env} Fleet'
+      Name: !Sub '${Env}Fleet'
+      EnableDefaultInternetAccess: false
+      FleetType: !Ref FleetTypeSetting
+      InstanceType: !Ref FleetInstanceType
+      ImageName: !Ref FleetImageName
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref AppStreamSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+      Tags:
+        - Key: Environment
+          Value: !Ref Env
+
+# Application stack to present to user
+  MyStack:
+    Type: AWS::AppStream::Stack
+    DependsOn: AmazonAppStreamServiceAccessRole
+    Properties:
+      ApplicationSettings:
+        Enabled: true
+        SettingsGroup: AppStreamEUCSettings
+      Description: 'AppStream 2.0 Stack'
+      DisplayName: !Sub '${Env} Stack' 
+      Name: !Sub '${Env}Stack'
+      RedirectURL: !Ref SessionRedirectURL
+      Tags:
+        - Key: Environment
+          Value: !Ref Env
+
+# Associate the stack with the fleet
+  StackFleetAssociation:
+    Type: AWS::AppStream::StackFleetAssociation
+    Properties:
+      FleetName: !Ref MyFleet
+      StackName: !Ref MyStack
+
+# Create a test user in the AppStream 2.0 User Pool
+  TestUser:
+    Type: AWS::AppStream::User
+    Properties:
+      AuthenticationType: USERPOOL
+      FirstName: Test
+      LastName: User
+      UserName: !Ref TestUserEmail
+
+# Associate the test user with the Stack and send the invite email
+  TestUserStackAssociation:
+    Type: AWS::AppStream::StackUserAssociation
+    DependsOn: TestUser
+    Properties:
+      AuthenticationType: USERPOOL
+      SendEmailNotification: true
+      StackName: !Ref MyStack
+      UserName: !Ref TestUserEmail
