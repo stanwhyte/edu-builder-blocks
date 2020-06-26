@@ -679,6 +679,7 @@ Resources:
           - /${Env}${Arg1}
           - Arg1: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp2]
     DependsOn:
+      - LdapCertificate
       - DomainController1
       - DomainController2
 

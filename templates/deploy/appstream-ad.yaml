@@ -137,6 +137,9 @@ Parameters:
 # 15) Create SSO application by script
 # 16) Update the fleet creation to use the AD config with domain join
 # 17) Make role creation automated?
-# 
+# 18) Service catalog deployment scenario as a desired state
+# 19) Incorporate billing and chargebacks / reporting / etc., alerts
+# 20) Also look at patching/governance
+ 
 Resources:
 
