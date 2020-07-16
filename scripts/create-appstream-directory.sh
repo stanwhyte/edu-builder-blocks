@@ -23,7 +23,7 @@ fi
 extract_param() {
   local var_name=$1
   echo "/$env$2 -> $var_name"
-  local result="$(aws ssm get-parameter --output text --name /$env$2 | cut -f6)"
+  local result="$(aws ssm get-parameter --output text --name /$env$2 | cut -f7)"
   if [ -z "$result" ]
   then
     echo "$env$2 couldn't be extracted from the SSM parameter store.  Please ensure that it is populated with a value."
