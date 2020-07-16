@@ -9,11 +9,11 @@ Metadata:
       - Label:
           default: CloudFormation Bucket Information
         Parameters:
-          - BucketPartition
           - BucketRegion
-          - BucketUrlSuffix
           - BucketName
           - KeyPrefix
+          - BucketPartition
+          - BucketUrlSuffix
     ParameterLabels:
       Env:
         default: Environment Name
@@ -51,19 +51,15 @@ Parameters:
       - aws-cn
       - aws-us-gov
   BucketName:
-    AllowedPattern: '^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$'
-    ConstraintDescription: Bucket name can include numbers, lowercase
-      letters, uppercase letters, and hyphens (-). It cannot start or end 
-      with a hyphen (-).
-    Default: cfn-example-customer
-    Description: S3 bucket name for the CloudFormation assets. Bucket name
-      can include numbers, lowercase letters, uppercase letters, and 
-      hyphens (-). It cannot start or end with a hyphen (-).
-    Type: String
+    Description: SSM Parameter with the S3 bucket name containing the
+      CloudFormation assets.
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /DEV/Bootstrap/CloudFormation/S3/Bucket/Name
   BucketRegion:
-    Default: us-east-1
-    Description: The AWS Region where the S3 bucket (BucketName) is hosted.
-    Type: String
+    Description: SSM Parameter with the region for the S3 bucket containing the
+      CloudFormation assets.
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /DEV/Bootstrap/CloudFormation/S3/Bucket/Region
   KeyPrefix:
     AllowedPattern: '^[0-9a-zA-Z-/]*$'
     ConstraintDescription: Key prefix can include numbers, lowercase letters,
@@ -76,35 +72,11 @@ Parameters:
 Mappings:
   Keys:
     Bootstrap:
-      BucketName: /Bootstrap/CloudFormation/S3/Bucket/Name
-      BucketRegion: /Bootstrap/CloudFormation/S3/Bucket/Region
       KeyPrefix: /Bootstrap/CloudFormation/S3/Bucket/KeyPrefix
       BucketUrl: /Bootstrap/CloudFormation/S3/Bucket/Url
       BucketArn: /Bootstrap/CloudFormation/S3/Bucket/Arn 
       BucketFullArn: /Bootstrap/CloudFormation/S3/Bucket/FullArn 
 Resources:
-  ParamBucketName:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Description: The name of the bucket housing the CloudFormation templates
-      Name: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Bootstrap,BucketName]
-      Value: !Ref BucketName
-      Type: String
-      Tags:
-        Environment: !Ref Env
-  ParamBucketRegion:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Description: The region of the bucket housing the CloudFormation templates
-      Name: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Bootstrap,BucketRegion]
-      Value: !Ref BucketRegion
-      Type: String
-      Tags:
-        Environment: !Ref Env
   ParamKeyPrefix:
     Type: AWS::SSM::Parameter
     Properties:

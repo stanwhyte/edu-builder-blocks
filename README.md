@@ -43,11 +43,10 @@ In order to complete the deployment of all workloads listed below, ensure the fo
 1. [Create](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html#having-ec2-create-your-key-pair) a new keypair if necessary to allow access to any EC2 instances subsequently created.
 1. Select the desired region to be used for all regional workload deployments, using the [regional product services](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) table to ensure all desired services are available.  It is recommended initial testing be performed in the `us-east-1` region as it has all services available. 
 1. [Create](https://docs.aws.amazon.com/IAM/latest/UserGuide/getting-started_create-admin-group.html) a user with administrative privileges.
-1. [Install](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) and [configure](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) the AWS command line interface.
+1. [Install](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) and [configure](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) the AWS command line interface, setting the default region for the profile to be the one selected above.
+1. Optionally, [configure](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html) the `AWS_PROFILE` environment variable in the current shell if multiple profiles are being used.  This step is unnecessary if the default profile is being used.
 1. Clone the EDU Builder Blocks project `git clone https://github.com/aws-samples/edu-builder-blocks.git` to establish a local copy of the project and change into the correct directory `cd edu-builder-blocks`.
-1. [Create](https://docs.aws.amazon.com/AmazonS3/latest/gsg/CreatingABucket.html) an S3 bucket in the region of choice.  
-1. Search and replace the BUCKET string in the current file (README.md) with the new bucket name `sed -i '.bak' 's/BUCKET/TBCK/2; s/BUCKET/my-bucket-name/g; s/TBCK/BUCKET/g' README.md`
-1. Search and replace the REGION string in the current file (README.md) with the selected region `sed -i '' 's/REGION/TRGN/2; s/REGION/us-east-1/g; s/TRGN/REGION/g' README.md`
+1. Use the `./scripts/bootstrap.sh -d . -e DEV -b BUCKET` script to create an S3 bucket and modify this README.md file to point to the correct region and s3 bucket name.
 1. Use the `./scripts/build-submodules.sh -d .` script to update all of the submodules to the latest version and prepare them for deployment.
 
 
@@ -56,7 +55,7 @@ Development (DEV)
 
 The development environment is intended to be easily destroyed and recreated.  Further, it depends on a simulated remote site deployed in AWS to complement the normal AWS infrastructure.  As such the instructions below vary slightly from the higher level environments.
 
-1. Use the `./scripts/s3-sync.sh -d . -b BUCKET -e DEV` script to synchronize the current project with the S3 bucket.
+1. Use the `./scripts/s3-sync.sh -d . -e DEV` script to synchronize the current project with the S3 bucket.
 1. Deploy the [Bootstrap](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https%3A%2F%2FBUCKET.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Fbootstrap.yaml&stackName=dev-bootstrap&param_BucketName=BUCKET&param_BucketRegion=REGION) stack to populate the SSM Parameter Store with the location of the CloudFormation templates and supporting code.
 1. Deploy the [Foundation](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https%3A%2F%2FBUCKET.s3.amazonaws.com%2FDEV%2Ftemplates%2Fdeploy%2Ffoundation.yaml&stackName=dev-foundation) stack and complete manual configuration changes as appropriate:
     * Configure the DNS authoritative name server for the external zone to delegate responsibility to AWS.

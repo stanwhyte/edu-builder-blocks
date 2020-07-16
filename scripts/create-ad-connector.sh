@@ -29,6 +29,7 @@ extract_param() {
     echo "$env$2 couldn't be extracted from the SSM parameter store.  Please ensure that it is populated with a value."
     exit 1
   fi
+  echo $result
   eval $var_name=\$result
 }
 
