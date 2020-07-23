@@ -1,13 +1,9 @@
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
-  Env:
-    Description: The environment associated with this network (i.e. DEV, PRD).
-    Default: ENV
-    Type: String
   CidrPrefix:
     Description: The SSM parameter containing the id for the AWS VPC
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /ENV/Foundation/EC2/VPC/CidrBlockPrefix
+    Default: /Foundation/EC2/VPC/CidrBlockPrefix
   CidrSuffix1:
     Description: The CIDR block for subnet 1.
     Type: String
@@ -25,23 +21,23 @@ Parameters:
   Vpc:
     Description: The SSM parameter containing the id for the AWS VPC
     Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
-    Default: /ENV/Foundation/EC2/VPC/Id
+    Default: /Foundation/EC2/VPC/Id
   AvailabilityZone1:
     Description: The SSM parameter containing the first availability zone.
     Type: AWS::SSM::Parameter::Value<AWS::EC2::AvailabilityZone::Name>
-    Default: /ENV/Foundation/1/EC2/AvailabilityZone/Name
+    Default: /Foundation/1/EC2/AvailabilityZone/Name
   AvailabilityZone2:
     Description: The SSM parameter containing the second availability zone.
     Type: AWS::SSM::Parameter::Value<AWS::EC2::AvailabilityZone::Name>
-    Default: /ENV/Foundation/2/EC2/AvailabilityZone/Name
+    Default: /Foundation/2/EC2/AvailabilityZone/Name
   RouteTable1:
     Description: The SSM parameter containing the route table for subnet 1.
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /ENV/Foundation/Private/EC2/RouteTable/Id
+    Default: /Foundation/Private/EC2/RouteTable/Id
   RouteTable2:
     Description: The SSM parameter containing the route table for subnet 2.
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /ENV/Foundation/Private/EC2/RouteTable/Id
+    Default: /Foundation/Private/EC2/RouteTable/Id
   xCidr1:
     Description: The SSM parameter reference for the first subnet cidr block
     Default: /WORKLOAD/Private/1/EC2/Subnet/CidrBlock
@@ -87,35 +83,27 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The cidr block for the first subnet
-      Name: !Sub /${Env}${xCidr1}
+      Name: !Sub ${xCidr1}
       Value: !Sub ${CidrPrefix}.${CidrSuffix1}
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamCidr2:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The cidr block for the second subnet
-      Name: !Sub /${Env}${xCidr2}
+      Name: !Sub ${xCidr2}
       Value: !Sub ${CidrPrefix}.${CidrSuffix2}
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamSubnet1:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The id of the first subnet
-      Name: !Sub /${Env}${xSubnet1}
+      Name: !Sub ${xSubnet1}
       Value: !Ref Subnet1
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamSubnet2:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The id of the second subnet
-      Name: !Sub /${Env}${xSubnet2}
+      Name: !Sub ${xSubnet2}
       Value: !Ref Subnet2
       Type: String
-      Tags:
-        Environment: !Ref Env

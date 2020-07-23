@@ -3,13 +3,13 @@ Description: This template adds privileges to the domain member SG for a Domain
   Controller cidr range (inside or outside the VPC)
 Parameters:
   SecurityGroup:
-    Default: /ENV/ActiveDirectory/DomainMember/EC2/SecurityGroup/Id
+    Default: /ActiveDirectory/DomainMember/EC2/SecurityGroup/Id
     Type: AWS::SSM::Parameter::Value<AWS::EC2::SecurityGroup::Id>
   Cidr1:
-    Default: /ENV/ActiveDirectory/1/EC2/Subnet/CidrBlock
+    Default: /ActiveDirectory/1/EC2/Subnet/CidrBlock
     Type: AWS::SSM::Parameter::Value<String>
   Cidr2:
-    Default: /ENV/ActiveDirectory/2/EC2/Subnet/CidrBlock
+    Default: /ActiveDirectory/2/EC2/Subnet/CidrBlock
     Type: AWS::SSM::Parameter::Value<String>
 Resources:
   Inbound1RuleTCP3389: 

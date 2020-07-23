@@ -1,8 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
-  Env:
-    Type: String
-    Default: ENV
   ExternalZoneName:
     Description: An external (internet-facing) DNS name used to create a
       Route53 hosted zone for which AWS will be delegated responsibility.
@@ -20,7 +17,7 @@ Parameters:
   Vpc:
     Description: The SSM parameter containing the id for the AWS VPC
     Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
-    Default: /ENV/Foundation/EC2/VPC/Id
+    Default: /Foundation/EC2/VPC/Id
   xExternalHostedZone:
     Description: The SSM parameter reference for the external hosted zone id
     Default: /Foundation/External/Route53/HostedZone/Id
@@ -54,35 +51,27 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The id of the external hosted zone
-      Name: !Sub '/${Env}${xExternalHostedZone}'
+      Name: !Sub '${xExternalHostedZone}'
       Value: !Ref ExternalZone
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamInternalHostedZone:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The id of the internal hosted zone
-      Name: !Sub '/${Env}${xInternalHostedZone}'
+      Name: !Sub '${xInternalHostedZone}'
       Value: !Ref InternalZone
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamExternalHostedZoneName:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The dns name associated with the external hosted zone
-      Name: !Sub '/${Env}${xExternalHostedZoneName}'
+      Name: !Sub '${xExternalHostedZoneName}'
       Value: !Ref ExternalZoneName
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamInternalHostedZoneName:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The dns name associated with the internal hosted zone
-      Name: !Sub '/${Env}${xInternalHostedZoneName}'
+      Name: !Sub '${xInternalHostedZoneName}'
       Value: !Ref InternalZoneName
       Type: String
-      Tags:
-        Environment: !Ref Env

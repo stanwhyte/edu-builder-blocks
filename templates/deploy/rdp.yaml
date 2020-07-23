@@ -12,7 +12,6 @@ Metadata:
       - Label:
           default: Environment Configuration
         Parameters:
-          - Env
           - CfnUrl
       - Label:
           default: Network Configuration
@@ -29,8 +28,6 @@ Metadata:
         Parameters:
           - NumberOfRDGWHosts
     ParameterLabels:
-      Env:
-        default: Environment
       CfnUrl:
         default: CloudFormation S3 Url
       KeyPairName:
@@ -44,21 +41,12 @@ Metadata:
       RDGWCIDR:
         default: Allowed Remote Desktop Gateway External Access CIDR
 Parameters:
-  Env:
-    Description: The env associated with this network (i.e. DEV, PRD, etc.)
-    Type: String
-    Default: DEV
-    AllowedValues:
-      - DEV
-      - TST
-      - STG
-      - PRD
   CfnUrl:
     Description: The key for the SSM parameter containing the full url with
       of the S3 bucket with all of the CloudFormation templates and supporting
       scripts and other components.
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /DEV/Bootstrap/CloudFormation/S3/Bucket/Url
+    Default: /Bootstrap/CloudFormation/S3/Bucket/Url
   KeyPairName:
     Description: Public/private key pairs allow you to securely connect to 
       your instance after it launches
@@ -108,23 +96,13 @@ Resources:
         RDGWCIDR: !Ref RDGWCIDR
         NumberOfRDGWHosts: !Ref NumberOfRDGWHosts
         RDGWInstanceType: !Ref RDGWInstanceType
-        AdminSecret:
-          !Sub /${Env}/ActiveDirectory/DomainAdmin/SecretsManager/Secret/Id
-        DomainDNSName:
-          !Sub /${Env}/ActiveDirectory/Domain/DNS/Name
-        DomainNetBIOSName:
-          !Sub /${Env}/ActiveDirectory/Domain/NetBIOS/Name
-        DomainMemberSGID:
-          !Sub /${Env}/ActiveDirectory/DomainMember/EC2/SecurityGroup/Id
-        PublicSubnet1ID:
-          !Sub /${Env}/Foundation/Public/1/EC2/Subnet/Id
-        PublicSubnet2ID:
-          !Sub /${Env}/Foundation/Public/2/EC2/Subnet/Id
-        BucketName:
-          !Sub /${Env}/Bootstrap/CloudFormation/S3/Bucket/Name
-        BucketKeyPrefix:
-          !Sub /${Env}/Bootstrap/CloudFormation/S3/Bucket/KeyPrefix
-        BucketRegion:
-          !Sub /${Env}/Bootstrap/CloudFormation/S3/Bucket/Region
-        Vpc:
-          !Sub /${Env}/Foundation/EC2/VPC/Id
+        AdminSecret: /ActiveDirectory/DomainAdmin/SecretsManager/Secret/Id
+        DomainDNSName: /ActiveDirectory/Domain/DNS/Name
+        DomainNetBIOSName: /ActiveDirectory/Domain/NetBIOS/Name
+        DomainMemberSGID: /ActiveDirectory/DomainMember/EC2/SecurityGroup/Id
+        PublicSubnet1ID: /Foundation/Public/1/EC2/Subnet/Id
+        PublicSubnet2ID: /Foundation/Public/2/EC2/Subnet/Id
+        BucketName: /Bootstrap/CloudFormation/S3/Bucket/Name
+        BucketKeyPrefix: /Bootstrap/CloudFormation/S3/Bucket/KeyPrefix
+        BucketRegion: /Bootstrap/CloudFormation/S3/Bucket/Region
+        Vpc: /Foundation/EC2/VPC/Id

@@ -3,59 +3,25 @@
 # managed active directory instances (as stored in the SSM Parameter store)
 
 display_usage() { 
-  echo -e "\nUsage:\ncreate-ad-connector.sh -e DEV\n" 
-  exit 0
+  echo -e "Usage:\ncreate-ad-connector.sh -d DIRECTORY" 
+  exit 1
 } 
 
-while getopts "e:h" option; do
+while getopts "d:h" option; do
   case ${option} in
-    e) env=$OPTARG;;
+    d) dir=$OPTARG;;
     h) display_usage;;
   esac
 done
 
-if [ -z "$env" ]
+echo
+
+if [ -z "$dir" ]
 then
-  echo "The environment wasn't set properly"
-  display_usage  
+  display_usage
 fi
 
-extract_param() {
-  local var_name=$1
-  echo "/$env$2 -> $var_name"
-  local result="$(aws ssm get-parameter --output text --name /$env$2 | cut -f7)"
-  if [ -z "$result" ]
-  then
-    echo "$env$2 couldn't be extracted from the SSM parameter store.  Please ensure that it is populated with a value."
-    exit 1
-  fi
-  eval $var_name=\$result
-}
-
-extract_secret() {
-  local var_name=$1
-  echo "$2 -> $var_name"
-  local result="$(aws secretsmanager get-secret-value --output text --secret-id $2 --version-stage AWSCURRENT | cut -f4)"
-  if [ -z "$result" ]
-  then
-    echo "$2 couldn't be extracted from Secrets Manager.  Please ensure that it is populated with a value."
-    exit 1
-  fi
-  eval $var_name=\$result
-}
-
-extract_json() {
-  local var_name=$1
-  echo "$2 -> $var_name"
-  local result="$(echo $3 | grep -o '"'$2'" : "[^"]*' | grep -o '[^"]*$')"
-  if [ -z "$result" ]
-  then
-    echo "$2 couldn't be extracted from the secret.  Please double check the formatting, it should be a json string with a username and password value."
-    exit 1
-  fi
-  eval $var_name=\$result
-}
-
+source $dir/scripts/_lib.sh
 
 echo "Extracting variables from SSM parameter store"
 echo "---------------------------------------------"
@@ -84,7 +50,7 @@ extract_json adminpassword password "$secretvalue"
 echo ""
 echo "Creating the Active Directory Connector"
 echo "---------------------------------------"
-directoryid=$(aws ds connect-directory --name $name --short-name $shortname --description 'Created by script create-ad-connector.sh' --size Small --connect-settings VpcId=$vpcid,SubnetIds=$adsubnet1,$adsubnet2,CustomerDnsIps=$dc1,$dc2,CustomerUserName=$adminid --password $adminpassword)
+directoryid=$(aws ds connect-directory --output text --name $name --short-name $shortname --description 'Created by script create-ad-connector.sh' --size Small --connect-settings VpcId=$vpcid,SubnetIds=$adsubnet1,$adsubnet2,CustomerDnsIps=$dc1,$dc2,CustomerUserName=$adminid --password $adminpassword)
 
 echo "Successfully created directory $directoryid, will wait for activation"
 
@@ -108,11 +74,11 @@ echo "Successfully registered AD connector with workspaces $registered"
 echo ""
 echo "Storing new SSM Parameter with directory id"
 echo "-------------------------------------------"
-parameter=$(aws ssm put-parameter --description 'The id of the AD connector that points to the primary domain' --name /$env/ActiveDirectory/Domain/DirectoryService/Connector/Id --value $directoryid --type String --overwrite)
+parameter=$(aws ssm put-parameter --description 'The id of the AD connector that points to the primary domain' --name /ActiveDirectory/Domain/DirectoryService/Connector/Id --value $directoryid --type String --overwrite)
 if [ -z "$parameter" ]
 then
   echo "The directory id couldn't be stored into the SSM parameter store"
   exit 1
 fi
 
-echo "Successfully stored the directory id into /$env/ActiveDirectory/Domain/DirectoryService/Connector/Id resulting in $parameter"
+echo "Successfully stored the directory id into /ActiveDirectory/Domain/DirectoryService/Connector/Id resulting in $parameter"

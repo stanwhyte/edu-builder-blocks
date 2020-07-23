@@ -1,18 +1,9 @@
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
-  Env:
-    Description: The environment associated with this network (i.e. DEV, PRD)
-    Type: String
-    Default: DEV
-    AllowedValues:
-      - DEV
-      - TST
-      - STG
-      - PRD
   DirectoryId:
     Description: The SSM parameter containing the directory identifier
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /DEV/ActiveDirectory/Domain/DirectoryService/Connector/Id
+    Default: /ActiveDirectory/Domain/DirectoryService/Connector/Id
 Resources:
   DomainAdmin:
     Type: AWS::WorkSpaces::Workspace
@@ -20,7 +11,3 @@ Resources:
       UserName: DomainAdmin
       BundleId: wsb-ddkxkghsv
       DirectoryId: !Ref DirectoryId
-      Tags:
-        - 
-          Key: Environment
-          Value: !Ref Env

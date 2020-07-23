@@ -1,9 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
-  Env:
-    Description: Env identifier for the objects being created
-    Default: ENV
-    Type: String
   AvailabilityZone1:
     Description: The first of two availability zones.
     Type: AWS::EC2::AvailabilityZone::Name
@@ -59,38 +55,30 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The VPC CIDR block prefix (the first two octets only)
-      Name: !Sub '/${Env}${xVpcCidrPrefix}'
+      Name: !Sub '${xVpcCidrPrefix}'
       Value: !Ref VpcCidrPrefix
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamVpcCidrBlock:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The VPC CIDR block
-      Name: !Sub '/${Env}${xVpcCidrBlock}'
+      Name: !Sub '${xVpcCidrBlock}'
       Value: !Sub '${VpcCidrPrefix}.${VpcCidrSuffix}'
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamAvailabilityZone1:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The first of two availability zones configured
-      Name: !Sub '/${Env}${xAvailabilityZone1}'
+      Name: !Sub '${xAvailabilityZone1}'
       Value: !Ref AvailabilityZone1
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamAvailabilityZone2:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The second of two availability zones configured
-      Name: !Sub '/${Env}${xAvailabilityZone2}'
+      Name: !Sub '${xAvailabilityZone2}'
       Value: !Ref AvailabilityZone2
       Type: String
-      Tags:
-        Environment: !Ref Env
   VPC:
     Type: 'AWS::EC2::VPC'
     Properties:
@@ -101,11 +89,9 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The VPC identifier
-      Name: !Sub '/${Env}${xVpc}'
+      Name: !Sub '${xVpc}'
       Value: !Ref VPC
       Type: String
-      Tags:
-        Environment: !Ref Env
   InternetGateway:
     Type: 'AWS::EC2::InternetGateway'
     Properties: {}
@@ -122,11 +108,9 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The private route table identifier
-      Name: !Sub '/${Env}${xPrivateRouteTable}'
+      Name: !Sub '${xPrivateRouteTable}'
       Value: !Ref PrivateRouteTable
       Type: String
-      Tags:
-        Environment: !Ref Env
   PublicRouteTable:
     Type: 'AWS::EC2::RouteTable'
     Properties:
@@ -135,11 +119,9 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The public route table identifier
-      Name: !Sub '/${Env}${xPublicRouteTable}'
+      Name: !Sub '${xPublicRouteTable}'
       Value: !Ref PublicRouteTable
       Type: String
-      Tags:
-        Environment: !Ref Env
   PublicRoute:
     Type: 'AWS::EC2::Route'
     Properties:

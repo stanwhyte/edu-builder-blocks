@@ -1,9 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
-  Env:
-    Description: The environment associated with this network, i.e. DEV or PRD.
-    Default: ENV
-    Type: String
   TransitGatewayAsn:
     Description: The Asn for the Transit Gateway.
     Default: 64512
@@ -11,14 +7,14 @@ Parameters:
   Vpc:
     Description: The SSM parameter containing the id for the AWS VPC
     Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
-    Default: /ENV/Foundation/EC2/VPC/Id
+    Default: /Foundation/EC2/VPC/Id
   Subnet1:
     Description: The SSM parameter reference for the first subnet
-    Default: /ENV/Foundation/TransitGateway/1/EC2/Subnet/Id
+    Default: /Foundation/TransitGateway/1/EC2/Subnet/Id
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
   Subnet2:
     Description: The SSM parameter reference for the second subnet
-    Default: /ENV/Foundation/TransitGateway/2/EC2/Subnet/Id
+    Default: /Foundation/TransitGateway/2/EC2/Subnet/Id
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
   xTransitGatewayRouteTable:
     Description: The SSM parameter reference for the TG route table
@@ -76,17 +72,13 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The transit gateway route table identifier
-      Name: !Sub '/${Env}${xTransitGatewayRouteTable}'
+      Name: !Sub '${xTransitGatewayRouteTable}'
       Value: !Ref TransitGatewayRouteTable
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamTransitGateway:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The transit gateway identifier
-      Name: !Sub '/${Env}${xTransitGateway}'
+      Name: !Sub '${xTransitGateway}'
       Value: !Ref TransitGateway
       Type: String
-      Tags:
-        Environment: !Ref Env

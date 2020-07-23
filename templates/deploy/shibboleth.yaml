@@ -11,22 +11,12 @@ Description: >
   endpoint.  HTTPS is enabled and a certificate is provisioned to protect it.
 
 Parameters:
-  Env:
-    Description: The env associated with this network (i.e. DEV,PRD,etc.)
-    Type: String
-    Default: DEV
-    AllowedValues:
-      - DEV
-      - TST
-      - STG
-      - PRD
-
   CfnUrl:
     Description: The key for the SSM parameter containing the full url with
       of the S3 bucket with all of the CloudFormation templates and supporting
       scripts and other components.
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /DEV/Bootstrap/CloudFormation/S3/Bucket/Url
+    Default: /Bootstrap/CloudFormation/S3/Bucket/Url
 
   Subdomain:
     Description: The subdomain to be associated with the core shibboleth sso
@@ -114,7 +104,6 @@ Metadata:
       - Label:
           default: Environment Configuration
         Parameters:
-          - Env
           - CfnUrl
       - Label:
           default: ECS Cluster Configuration
@@ -171,14 +160,9 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,Certificates,Single]
       Parameters:
-        Env: !Ref Env
         Subdomain: !Ref Subdomain
-        ExternalZoneName: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,ExternalZoneName]
-        InternalZoneName: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,InternalZoneName]
+        ExternalZoneName: !FindInMap [Keys,Foundation,ExternalZoneName]
+        InternalZoneName: !FindInMap [Keys,Foundation,InternalZoneName]
         xExternalName: !FindInMap [Keys,Shibboleth,SSOExternalName]
         xInternalName: !FindInMap [Keys,Shibboleth,SSOInternalName]
         xCertificateArn: !FindInMap [Keys,Shibboleth,SSOCertArn]
@@ -191,7 +175,6 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,Shibboleth,Wrap]
       Parameters:
-        Env: !Ref Env
         CfnUrl: !Ref CfnUrl
         LaunchType: !Ref LaunchType
         CodeCommitRepoName: !Ref CodeCommitRepoName
@@ -200,41 +183,17 @@ Resources:
         LDAPBaseDN: !Ref LDAPBaseDN
         LDAPReadOnlyUser: !Ref LDAPReadOnlyUser
         LDAPReadOnlyPassword: !Ref LDAPReadOnlyPassword
-        BucketName: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Bootstrap,BucketName]
-        BucketKeyPrefix: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Bootstrap,KeyPrefix]
-        ParentDomain: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,InternalZoneName]
-        FullyQualifiedDomainName: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Shibboleth,SSOInternalName]
-        CertificateARN: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Shibboleth,SSOCertArn]
-        Vpc: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,Vpc]
-        PublicSubnet1ID: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,PublicSubnet1]
-        PublicSubnet2ID: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,PublicSubnet2]
-        PrivateSubnet1ID: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,NatSubnet1]
-        PrivateSubnet2ID: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,NatSubnet2]
-        DnsHostedZone: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,ExternalHostedZone]
-        DnsName: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Shibboleth,SSOExternalName]
+        BucketName: !FindInMap [Keys,Bootstrap,BucketName]
+        BucketKeyPrefix: !FindInMap [Keys,Bootstrap,KeyPrefix]
+        ParentDomain: !FindInMap [Keys,Foundation,InternalZoneName]
+        FullyQualifiedDomainName: !FindInMap [Keys,Shibboleth,SSOInternalName]
+        CertificateARN: !FindInMap [Keys,Shibboleth,SSOCertArn]
+        Vpc: !FindInMap [Keys,Foundation,Vpc]
+        PublicSubnet1ID: !FindInMap [Keys,Foundation,PublicSubnet1]
+        PublicSubnet2ID: !FindInMap [Keys,Foundation,PublicSubnet2]
+        PrivateSubnet1ID: !FindInMap [Keys,Foundation,NatSubnet1]
+        PrivateSubnet2ID: !FindInMap [Keys,Foundation,NatSubnet2]
+        DnsHostedZone: !FindInMap [Keys,Foundation,ExternalHostedZone]
+        DnsName: !FindInMap [Keys,Shibboleth,SSOExternalName]
     DependsOn:
       - SSOCertificate

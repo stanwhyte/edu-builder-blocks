@@ -1,9 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
-  Env:
-    Description: The environment associated with this network, i.e. DEV or PRD.
-    Type: String
-    Default: ENV
   Scheme:
     Description: The scheme to be associated with the LB
     Type: String
@@ -30,43 +26,43 @@ Parameters:
   HostedZone:
     Description: The SSM parameter containing the hosted zone
     Type: AWS::SSM::Parameter::Value<AWS::Route53::HostedZone::Id>
-    Default: /ENV/Foundation/External/Route53/HostedZone/Id
+    Default: /Foundation/External/Route53/HostedZone/Id
   DnsName:
     Description: The SSM parameter containing the dns name
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /ENV/WORKLOAD/Specifier/Route53/Recordset/Name
+    Default: /WORKLOAD/Specifier/Route53/Recordset/Name
   CertificateArn:
     Description: The SSM parameter containing the certificate arn
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /ENV/WORKLOAD/SPECIFIER/CertificateManager/Certificate/Arn
+    Default: /WORKLOAD/SPECIFIER/CertificateManager/Certificate/Arn
   Vpc:
     Description: The SSM parameter containing the id for the AWS VPC
     Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
-    Default: /ENV/Foundation/EC2/VPC/Id
+    Default: /Foundation/EC2/VPC/Id
   AvailabilityZone1:
     Description: The SSM parameter containing the first availability zone.
     Type: AWS::SSM::Parameter::Value<AWS::EC2::AvailabilityZone::Name>
-    Default: /ENV/Foundation/1/EC2/AvailabilityZone/Name
+    Default: /Foundation/1/EC2/AvailabilityZone/Name
   AvailabilityZone2:
     Description: The SSM parameter containing the second availability zone.
     Type: AWS::SSM::Parameter::Value<AWS::EC2::AvailabilityZone::Name>
-    Default: /ENV/Foundation/2/EC2/AvailabilityZone/Name
+    Default: /Foundation/2/EC2/AvailabilityZone/Name
   Subnet1:
     Description: The subnet that will house the first LB connection
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
-    Default: /ENV/Foundation/Private/1/EC2/Subnet/Id
+    Default: /Foundation/Private/1/EC2/Subnet/Id
   Subnet2:
     Description: The subnet that will house the second LB connection
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
-    Default: /ENV/Foundation/Private/2/EC2/Subnet/Id
+    Default: /Foundation/Private/2/EC2/Subnet/Id
   TargetIp1:
     Description: The IP for the first target server
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /ENV/ActiveDirectory/DomainController/Remote/1/IpAddress
+    Default: /ActiveDirectory/DomainController/Remote/1/IpAddress
   TargetIp2:
     Description: The IP for the second target server
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /ENV/ActiveDirectory/DomainController/Remote/2/IpAddress
+    Default: /ActiveDirectory/DomainController/Remote/2/IpAddress
 Resources:
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer

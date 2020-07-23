@@ -1,19 +1,16 @@
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
-  Env:
-    Type: String
-    Default: ENV
   Subdomain:
     Description: The subdomain for this certificate, i.e. sso or ldap-dev
     Type: String
   ExternalZoneName:
     Description: The SSM parameter containing external zone domain
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /ENV/Foundation/External/Route53/HostedZone/Name
+    Default: /Foundation/External/Route53/HostedZone/Name
   InternalZoneName:
     Description: The SSM parameter containing internal zone domain
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /ENV/Foundation/Internal/Route53/HostedZone/Name
+    Default: /Foundation/Internal/Route53/HostedZone/Name
   xExternalName:
     Description: The external recordset name associated with this certificate
     Default: /WORKLOAD/SPECIFIER/External/Route53/RecordSet/Name
@@ -43,28 +40,22 @@ Resources:
         may be different than what is shown in the browser (the *internal* 
         domain).  If thus configured, a CNAME entry must be added in the
         authoritative DNS for the internal domain.
-      Name: !Sub '/${Env}${xExternalName}'
+      Name: !Sub '${xExternalName}'
       Value: !Sub '${Subdomain}.${ExternalZoneName}'
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamInternalDomain:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The internal domain associated with the certificate, this
         should always match what is shown in the user's browser or accessed
         via api.
-      Name: !Sub '/${Env}${xInternalName}'
+      Name: !Sub '${xInternalName}'
       Value: !Sub '${Subdomain}.${InternalZoneName}'
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamCertificateArn:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The arn identifier associated with the certificate
-      Name: !Sub '/${Env}${xCertificateArn}'
+      Name: !Sub '${xCertificateArn}'
       Value: !Ref Cert
       Type: String
-      Tags:
-        Environment: !Ref Env

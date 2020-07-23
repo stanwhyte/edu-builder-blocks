@@ -5,7 +5,6 @@ Metadata:
       - Label:
           default: Environment Configuration
         Parameters:
-          - Env
           - CfnUrl
       - Label:
           default: Existing Active Directory Information
@@ -49,28 +48,17 @@ Metadata:
         default: Remote Domain Controller IP 1
       DCRemoteIp2:
         default: Remote Domain Controller IP 2
-      Env:
-        default: Environment Name
       CreateWorkspacesDefaultRole:
         default: Create Workspaces Default Role
       CfnUrl:
         default: CloudFormation S3 Url SSM Parameter
 Parameters:
-  Env:
-    Description: The env associated with this network (i.e. DEV,PRD,etc.)
-    Type: String
-    Default: DEV
-    AllowedValues:
-      - DEV
-      - TST
-      - STG
-      - PRD
   CfnUrl:
     Description: The key for the SSM parameter containing the full url with
       of the S3 bucket with all of the CloudFormation templates and supporting
       scripts and other components.
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /DEV/Bootstrap/CloudFormation/S3/Bucket/Url
+    Default: /Bootstrap/CloudFormation/S3/Bucket/Url
   CreateWorkspacesDefaultRole:
     Description: If set to true, create the workspaces default role.  This role
       is required for Workspaces to be deployed, but only one of them is 
@@ -244,14 +232,9 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,Certificates,Single]
       Parameters:
-        Env: !Ref Env
         Subdomain: !Ref LdapSubdomain
-        ExternalZoneName: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,ExternalHostedZoneName]
-        InternalZoneName: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,InternalHostedZoneName]
+        ExternalZoneName: !FindInMap [Keys,Foundation,ExternalHostedZoneName]
+        InternalZoneName: !FindInMap [Keys,Foundation,InternalHostedZoneName]
         xExternalName: !FindInMap [Keys,ActiveDirectory,LDAPExternalName]
         xInternalName: !FindInMap [Keys,ActiveDirectory,LDAPInternalName]
         xCertificateArn: !FindInMap [Keys,ActiveDirectory,LDAPCertArn]
@@ -267,16 +250,9 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,Network,NatGatewayRouting]
       Parameters:
-        Env: !Ref Env
-        Vpc: !Sub 
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,Vpc]
-        NatGateway1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,NatGateway1]
-        NatGateway2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,NatGateway2]
+        Vpc: !FindInMap [Keys,Foundation,Vpc]
+        NatGateway1: !FindInMap [Keys,Foundation,NatGateway1]
+        NatGateway2: !FindInMap [Keys,Foundation,NatGateway2]
         xRouteTable1: !FindInMap [Keys,ActiveDirectory,RouteTable1]
         xRouteTable2: !FindInMap [Keys,ActiveDirectory,RouteTable2]
 
@@ -291,15 +267,9 @@ Resources:
         - Arg1: !FindInMap [Templates,Network,TGNatRoute]
       Parameters:
         StaticRouteCidr: !Sub ${DCRemoteIp1}/32
-        TransitGateway: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,TransitGateway]
-        RouteTable1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,RouteTable1]
-        RouteTable2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,RouteTable2]
+        TransitGateway: !FindInMap [Keys,Foundation,TransitGateway]
+        RouteTable1: !FindInMap [Keys,ActiveDirectory,RouteTable1]
+        RouteTable2: !FindInMap [Keys,ActiveDirectory,RouteTable2]
     DependsOn:
       - RouteTables
   TransitGatewayRouteRemoteDC2:
@@ -310,15 +280,9 @@ Resources:
         - Arg1: !FindInMap [Templates,Network,TGNatRoute]
       Parameters:
         StaticRouteCidr: !Sub ${DCRemoteIp2}/32
-        TransitGateway: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,TransitGateway]
-        RouteTable1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,RouteTable1]
-        RouteTable2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,RouteTable2]
+        TransitGateway: !FindInMap [Keys,Foundation,TransitGateway]
+        RouteTable1: !FindInMap [Keys,ActiveDirectory,RouteTable1]
+        RouteTable2: !FindInMap [Keys,ActiveDirectory,RouteTable2]
     DependsOn:
       - RouteTables
 
@@ -331,27 +295,14 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,Network,Subnet]
       Parameters:
-        Env: !Ref Env
-        CidrPrefix: !Sub 
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,VpcCidrPrefix]
+        CidrPrefix: !FindInMap [Keys,Foundation,VpcCidrPrefix]
         CidrSuffix1: 0.224/28
         CidrSuffix2: 0.240/28
-        Vpc: !Sub 
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,Vpc]
-        AvailabilityZone1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone1]
-        AvailabilityZone2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone2]
-        RouteTable1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,RouteTable1]
-        RouteTable2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,RouteTable2]
+        Vpc: !FindInMap [Keys,Foundation,Vpc]
+        AvailabilityZone1: !FindInMap [Keys,Foundation,AvailabilityZone1]
+        AvailabilityZone2: !FindInMap [Keys,Foundation,AvailabilityZone2]
+        RouteTable1: !FindInMap [Keys,ActiveDirectory,RouteTable1]
+        RouteTable2: !FindInMap [Keys,ActiveDirectory,RouteTable2]
         xCidr1: !FindInMap [Keys,ActiveDirectory,SubnetCidr1]
         xCidr2: !FindInMap [Keys,ActiveDirectory,SubnetCidr2]
         xSubnet1: !FindInMap [Keys,ActiveDirectory,Subnet1]
@@ -369,19 +320,12 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,ActiveDirectory,Init]
       Parameters:
-        Env: !Ref Env
         CfnScriptsUrl: !Sub
           - ${CfnUrl}${Arg1}
           - Arg1: !FindInMap [Templates,ActiveDirectory,ScriptsFolder]
-        CfnArn: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Bootstrap,BucketFullArn]
-        Vpc: !Sub 
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,Vpc]
-        VpcCidrBlock: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,VpcCidrBlock]
+        CfnArn: !FindInMap [Keys,Bootstrap,BucketFullArn]
+        Vpc: !FindInMap [Keys,Foundation,Vpc]
+        VpcCidrBlock: !FindInMap [Keys,Foundation,VpcCidrBlock]
         AdminUser: !Ref AdminUser
         AdminPassword: !Ref AdminPassword
         Domain: !Ref Domain
@@ -415,21 +359,11 @@ Resources:
         - Arg1: !FindInMap [Templates,Network,TGDefaultRoutes]
       Parameters:
         StaticRouteCidr: !Sub ${DCRemoteIp1}/32
-        TransitGateway: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,TransitGateway]
-        NatRouteTable1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,NatRouteTable1]
-        NatRouteTable2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,NatRouteTable2]
-        PrivateRouteTable: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,PrivateRouteTable]
-        PublicRouteTable: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,PublicRouteTable]
+        TransitGateway: !FindInMap [Keys,Foundation,TransitGateway]
+        NatRouteTable1: !FindInMap [Keys,Foundation,NatRouteTable1]
+        NatRouteTable2: !FindInMap [Keys,Foundation,NatRouteTable2]
+        PrivateRouteTable: !FindInMap [Keys,Foundation,PrivateRouteTable]
+        PublicRouteTable: !FindInMap [Keys,Foundation,PublicRouteTable]
     DependsOn:
       - Subnets
       - Init
@@ -442,21 +376,11 @@ Resources:
         - Arg1: !FindInMap [Templates,Network,TGDefaultRoutes]
       Parameters:
         StaticRouteCidr: !Sub ${DCRemoteIp2}/32
-        TransitGateway: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,TransitGateway]
-        NatRouteTable1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,NatRouteTable1]
-        NatRouteTable2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,NatRouteTable2]
-        PrivateRouteTable: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,PrivateRouteTable]
-        PublicRouteTable: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,PublicRouteTable]
+        TransitGateway: !FindInMap [Keys,Foundation,TransitGateway]
+        NatRouteTable1: !FindInMap [Keys,Foundation,NatRouteTable1]
+        NatRouteTable2: !FindInMap [Keys,Foundation,NatRouteTable2]
+        PrivateRouteTable: !FindInMap [Keys,Foundation,PrivateRouteTable]
+        PublicRouteTable: !FindInMap [Keys,Foundation,PublicRouteTable]
     DependsOn:
       - Subnets
       - Init
@@ -472,49 +396,24 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,ActiveDirectory,DomainController]
       Parameters:
-        Env: !Ref Env
         TargetLocation: !Ref TargetLocation
         InstanceType: !Ref InstanceType
         KeyPairName: !Ref KeyPairName
         WINFULLBASE: !Ref WINFULLBASE
         NetBIOS: !Sub ${NetBIOSPrefix}1
-        IpPrefix: !Sub 
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,VpcCidrPrefix]
+        IpPrefix: !FindInMap [Keys,Foundation,VpcCidrPrefix]
         IpSuffix: 0.229
-        Cidr: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,SubnetCidr1]
-        Subnet: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,Subnet1]
-        SecurityGroup: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCSecurityGroup]
-        SourceIp: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCRemoteIp1]
-        SourceCidr: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCRemoteCidr1]
-        AutomationDoc: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCAutomationDoc]
-        AssumeRole: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCAssumeRole]
-        DomainDNSName: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,Domain]
-        DomainNetBIOSName: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,NetBIOS]
-        AdminSecret: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,AdminSecret]
-        InstanceProfile: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCInstProfile]
+        Cidr: !FindInMap [Keys,ActiveDirectory,SubnetCidr1]
+        Subnet: !FindInMap [Keys,ActiveDirectory,Subnet1]
+        SecurityGroup: !FindInMap [Keys,ActiveDirectory,DCSecurityGroup]
+        SourceIp: !FindInMap [Keys,ActiveDirectory,DCRemoteIp1]
+        SourceCidr: !FindInMap [Keys,ActiveDirectory,DCRemoteCidr1]
+        AutomationDoc: !FindInMap [Keys,ActiveDirectory,DCAutomationDoc]
+        AssumeRole: !FindInMap [Keys,ActiveDirectory,DCAssumeRole]
+        DomainDNSName: !FindInMap [Keys,ActiveDirectory,Domain]
+        DomainNetBIOSName: !FindInMap [Keys,ActiveDirectory,NetBIOS]
+        AdminSecret: !FindInMap [Keys,ActiveDirectory,AdminSecret]
+        InstanceProfile: !FindInMap [Keys,ActiveDirectory,DCInstProfile]
         xIpAddress: !FindInMap [Keys,ActiveDirectory,DCAWSIp1]
         xInstance: !FindInMap [Keys,ActiveDirectory,DCAWSInstance1]
         xPrimaryIp: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp1]
@@ -529,49 +428,24 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,ActiveDirectory,DomainController]
       Parameters:
-        Env: !Ref Env
         TargetLocation: !Ref TargetLocation
         InstanceType: !Ref InstanceType
         KeyPairName: !Ref KeyPairName
         WINFULLBASE: !Ref WINFULLBASE
         NetBIOS: !Sub ${NetBIOSPrefix}2
-        IpPrefix: !Sub 
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,VpcCidrPrefix]
+        IpPrefix: !FindInMap [Keys,Foundation,VpcCidrPrefix]
         IpSuffix: 0.245
-        Cidr: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,SubnetCidr2]
-        Subnet: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,Subnet2]
-        SecurityGroup: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCSecurityGroup]
-        SourceIp: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCRemoteIp2]
-        SourceCidr: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCRemoteCidr2]
-        AutomationDoc: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCAutomationDoc]
-        AssumeRole: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCAssumeRole]
-        DomainDNSName: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,Domain]
-        DomainNetBIOSName: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,NetBIOS]
-        AdminSecret: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,AdminSecret]
-        InstanceProfile: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCInstProfile]
+        Cidr: !FindInMap [Keys,ActiveDirectory,SubnetCidr2]
+        Subnet: !FindInMap [Keys,ActiveDirectory,Subnet2]
+        SecurityGroup: !FindInMap [Keys,ActiveDirectory,DCSecurityGroup]
+        SourceIp: !FindInMap [Keys,ActiveDirectory,DCRemoteIp2]
+        SourceCidr: !FindInMap [Keys,ActiveDirectory,DCRemoteCidr2]
+        AutomationDoc: !FindInMap [Keys,ActiveDirectory,DCAutomationDoc]
+        AssumeRole: !FindInMap [Keys,ActiveDirectory,DCAssumeRole]
+        DomainDNSName: !FindInMap [Keys,ActiveDirectory,Domain]
+        DomainNetBIOSName: !FindInMap [Keys,ActiveDirectory,NetBIOS]
+        AdminSecret: !FindInMap [Keys,ActiveDirectory,AdminSecret]
+        InstanceProfile: !FindInMap [Keys,ActiveDirectory,DCInstProfile]
         xIpAddress: !FindInMap [Keys,ActiveDirectory,DCAWSIp2]
         xInstance: !FindInMap [Keys,ActiveDirectory,DCAWSInstance2]
         xPrimaryIp: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp2]
@@ -589,15 +463,9 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,ActiveDirectory,MemberCidr]
       Parameters:
-        SecurityGroup: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DMSecurityGroup]
-        Cidr1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCPrimaryCidr1]
-        Cidr2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCPrimaryCidr2]
+        SecurityGroup: !FindInMap [Keys,ActiveDirectory,DMSecurityGroup]
+        Cidr1: !FindInMap [Keys,ActiveDirectory,DCPrimaryCidr1]
+        Cidr2: !FindInMap [Keys,ActiveDirectory,DCPrimaryCidr2]
     DependsOn:
       - DomainController1
       - DomainController2
@@ -612,26 +480,13 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,Dns,OutboundResolver]
       Parameters:
-        Env: !Ref Env
         TargetDomain: !Ref Domain
-        TargetIp1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp1]
-        TargetIp2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp2]
-        Vpc: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,Vpc]
-        EndpointSubnet1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,Subnet1]
-        EndpointSubnet2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,Subnet2]
-        EndpointIpPrefix: !Sub 
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,VpcCidrPrefix]
+        TargetIp1: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp1]
+        TargetIp2: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp2]
+        Vpc: !FindInMap [Keys,Foundation,Vpc]
+        EndpointSubnet1: !FindInMap [Keys,ActiveDirectory,Subnet1]
+        EndpointSubnet2: !FindInMap [Keys,ActiveDirectory,Subnet2]
+        EndpointIpPrefix: !FindInMap [Keys,Foundation,VpcCidrPrefix]
         EndpointIpSuffix1: 0.228
         EndpointIpSuffix2: 0.244
     DependsOn:
@@ -647,37 +502,16 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,Network,NetworkLoadBalancer]
       Parameters:
-        Env: !Ref Env
-        AvailabilityZone1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone1]
-        AvailabilityZone2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone2]
-        HostedZone: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,InternalHostedZone]
-        DnsName: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,LDAPInternalName]
-        CertificateArn: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,LDAPCertArn]
-        Vpc: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,Vpc]
-        Subnet1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,PrivateSubnet1]
-        Subnet2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,PrivateSubnet2]
-        TargetIp1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp1]
-        TargetIp2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp2]
+        AvailabilityZone1: !FindInMap [Keys,Foundation,AvailabilityZone1]
+        AvailabilityZone2: !FindInMap [Keys,Foundation,AvailabilityZone2]
+        HostedZone: !FindInMap [Keys,Foundation,InternalHostedZone]
+        DnsName: !FindInMap [Keys,ActiveDirectory,LDAPInternalName]
+        CertificateArn: !FindInMap [Keys,ActiveDirectory,LDAPCertArn]
+        Vpc: !FindInMap [Keys,Foundation,Vpc]
+        Subnet1: !FindInMap [Keys,Foundation,PrivateSubnet1]
+        Subnet2: !FindInMap [Keys,Foundation,PrivateSubnet2]
+        TargetIp1: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp1]
+        TargetIp2: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp2]
     DependsOn:
       - LdapCertificate
       - DomainController1

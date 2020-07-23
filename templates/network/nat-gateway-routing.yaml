@@ -1,21 +1,17 @@
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
-  Env:
-    Description: Env identifier for the objects being created
-    Type: String
-    Default: ENV
   Vpc:
     Description: The SSM parameter containing the id for the AWS VPC
     Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
-    Default: /ENV/Foundation/EC2/VPC/Id
+    Default: /Foundation/EC2/VPC/Id
   NatGateway1:
     Description: The SSM parameter reference for the first NAT gateway
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /ENV/Foundation/NAT/1/EC2/NatGateway/Id
+    Default: /Foundation/NAT/1/EC2/NatGateway/Id
   NatGateway2:
     Description: The SSM parameter reference for the second NAT gateway
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /ENV/Foundation/NAT/2/EC2/NatGateway/Id
+    Default: /Foundation/NAT/2/EC2/NatGateway/Id
   xRouteTable1:
     Description: The SSM parameter reference for the first route table
     Default: /Foundation/NAT/1/EC2/RouteTable/Id
@@ -49,17 +45,13 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The id of the first NAT gateway route table
-      Name: !Sub '/${Env}${xRouteTable1}'
+      Name: !Sub '${xRouteTable1}'
       Value: !Ref NatRouteTable1
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamNatRouteTable2:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The id of the second NAT gateway route table
-      Name: !Sub '/${Env}${xRouteTable2}'
+      Name: !Sub '${xRouteTable2}'
       Value: !Ref NatRouteTable2
       Type: String
-      Tags:
-        Environment: !Ref Env

@@ -3,10 +3,6 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: Environment Configuration
-        Parameters:
-          - Env
-      - Label:
           default: CloudFormation Bucket Information
         Parameters:
           - BucketRegion
@@ -15,8 +11,6 @@ Metadata:
           - BucketPartition
           - BucketUrlSuffix
     ParameterLabels:
-      Env:
-        default: Environment Name
       BucketUrlSuffix:
         default: S3 Bucket URL Suffix
       BucketPartition:
@@ -28,15 +22,6 @@ Metadata:
       KeyPrefix:
         default: S3 Key Prefix
 Parameters:
-  Env:
-    Description: The environment associated with this network (i.e. DEV, PRD)
-    Type: String
-    Default: DEV
-    AllowedValues:
-      - DEV
-      - TST
-      - STG
-      - PRD
   BucketUrlSuffix:
     Type: String
     Default: amazonaws.com
@@ -54,70 +39,43 @@ Parameters:
     Description: SSM Parameter with the S3 bucket name containing the
       CloudFormation assets.
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /DEV/Bootstrap/CloudFormation/S3/Bucket/Name
+    Default: /Bootstrap/CloudFormation/S3/Bucket/Name
   BucketRegion:
     Description: SSM Parameter with the region for the S3 bucket containing the
       CloudFormation assets.
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /DEV/Bootstrap/CloudFormation/S3/Bucket/Region
+    Default: /Bootstrap/CloudFormation/S3/Bucket/Region
   KeyPrefix:
-    AllowedPattern: '^[0-9a-zA-Z-/]*$'
-    ConstraintDescription: Key prefix can include numbers, lowercase letters,
-      uppercase letters, hyphens (-), and forward slash (/).
-    Default: DEV/
     Description: S3 key prefix for the CloudFormation assets. Key prefix
       can include numbers, lowercase letters, uppercase letters, hyphens (-), 
       and forward slash (/).
-    Type: String
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /Bootstrap/CloudFormation/S3/Bucket/KeyPrefix
 Mappings:
   Keys:
     Bootstrap:
-      KeyPrefix: /Bootstrap/CloudFormation/S3/Bucket/KeyPrefix
       BucketUrl: /Bootstrap/CloudFormation/S3/Bucket/Url
       BucketArn: /Bootstrap/CloudFormation/S3/Bucket/Arn 
       BucketFullArn: /Bootstrap/CloudFormation/S3/Bucket/FullArn 
 Resources:
-  ParamKeyPrefix:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Description: The key prefix for the CloudFormation templates
-      Name: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Bootstrap,KeyPrefix]
-      Value: !Ref KeyPrefix
-      Type: String
-      Tags:
-        Environment: !Ref Env
   ParamBucketUrl:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The full URL for the CloudFormation templates
-      Name: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Bootstrap,BucketUrl]
+      Name: !FindInMap [Keys,Bootstrap,BucketUrl]
       Value: !Sub 'https://${BucketName}.s3.${BucketRegion}.${BucketUrlSuffix}/${KeyPrefix}'
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamBucketFullArn:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The full arn for the CloudFormation templates (with folder)
-      Name: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Bootstrap,BucketFullArn]
+      Name: !FindInMap [Keys,Bootstrap,BucketFullArn]
       Value: !Sub 'arn:${BucketPartition}:s3:::${BucketName}/${KeyPrefix}'
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamBucketArn:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The arn for the CloudFormation templates (without the folder)
-      Name: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Bootstrap,BucketArn]
+      Name: !FindInMap [Keys,Bootstrap,BucketArn]
       Value: !Sub 'arn:${BucketPartition}:s3:::${BucketName}/'
       Type: String
-      Tags:
-        Environment: !Ref Env

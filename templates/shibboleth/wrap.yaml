@@ -4,8 +4,6 @@ Description: This template is a simple wrapper around the refarch-shibboleth
   inputs as the primary project, and pulls the remainder of them from
   the SSM parameter store.
 Parameters:
-  Env:
-    Type: String
   CfnUrl:
     Type: String
   LaunchType:

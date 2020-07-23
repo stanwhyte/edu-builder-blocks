@@ -2,11 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: This template creates the objects required to allow communications
   between the simulated remote site and a deployed foundations environment.
 Parameters:
-  Env:
-    Description: The environment to which the new simulated Active Directory
-      environment will be connected.  This environment must have the
-      foundation or equivalent module deployed with an appropriate VPC.
-    Type: String
   RemoteCidrBlock:
     Type: AWS::SSM::Parameter::Value<String>
   TransitGatewayId:

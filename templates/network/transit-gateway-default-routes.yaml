@@ -5,23 +5,23 @@ Parameters:
     Type: String
   TransitGateway:
     Description: The SSM parameter reference for the transit gateway id
-    Default: /ENV/Foundation/EC2/TransitGateway/Id
+    Default: /Foundation/EC2/TransitGateway/Id
     Type: AWS::SSM::Parameter::Value<String>
   NatRouteTable1:
     Description: The SSM parameter reference for the first NAT route table
-    Default: /ENV/Foundation/NAT/1/EC2/RouteTable/Id
+    Default: /Foundation/NAT/1/EC2/RouteTable/Id
     Type: AWS::SSM::Parameter::Value<String>
   NatRouteTable2:
     Description: The SSM parameter reference for the second NAT route table
-    Default: /ENV/Foundation/NAT/2/EC2/RouteTable/Id
+    Default: /Foundation/NAT/2/EC2/RouteTable/Id
     Type: AWS::SSM::Parameter::Value<String>
   PrivateRouteTable:
     Description: The SSM parameter reference for the private route table
-    Default: /ENV/Foundation/Private/EC2/RouteTable/Id
+    Default: /Foundation/Private/EC2/RouteTable/Id
     Type: AWS::SSM::Parameter::Value<String>
   PublicRouteTable:
     Description: The SSM parameter reference for the public route table
-    Default: /ENV/Foundation/Public/EC2/RouteTable/Id
+    Default: /Foundation/Public/EC2/RouteTable/Id
     Type: AWS::SSM::Parameter::Value<String>
 Resources:
   TransitGatewayPublicRoute:

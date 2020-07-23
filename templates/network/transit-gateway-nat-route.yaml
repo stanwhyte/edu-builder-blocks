@@ -7,14 +7,14 @@ Parameters:
   TransitGateway:
     Description: The SSM parameter reference for the transit gateway id
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /ENV/Foundation/EC2/TransitGateway/Id
+    Default: /Foundation/EC2/TransitGateway/Id
   RouteTable1:
     Description: The cross stack reference for the route table id
-    Default: /ENV/Foundation/NAT/1/EC2/RouteTable/Id
+    Default: /Foundation/NAT/1/EC2/RouteTable/Id
     Type: AWS::SSM::Parameter::Value<String>
   RouteTable2:
     Description: The cross stack reference for the route table id
-    Default: /ENV/Foundation/NAT/2/EC2/RouteTable/Id
+    Default: /Foundation/NAT/2/EC2/RouteTable/Id
     Type: AWS::SSM::Parameter::Value<String>
 
 Resources:

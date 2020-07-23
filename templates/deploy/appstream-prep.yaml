@@ -1,0 +1,188 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  Vpc:
+    Description: The SSM parameter containing the id for the AWS VPC
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
+    Default: /Foundation/EC2/VPC/Id
+
+  PrivateSubnet1:
+    Description: The SSM parameter containing the first subnet to be used
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+    Default: /Foundation/NAT/1/EC2/Subnet/Id
+
+  PrivateSubnet2:
+    Description: The SSM parameter containing the second subnet to be used
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+    Default: /Foundation/NAT/2/EC2/Subnet/Id
+
+  SoftwareS3BucketName:
+    Description: Globally-unique DNS name for S3 bucket for storing software 
+      to install via Image Builder
+    Type: String
+    Default: example-dev-appstream-software
+    AllowedPattern: ^[a-z][a-z0-9\-]+$
+
+  DirectoryName:
+    Description: The SSM Parameter containing the domain name (dns) of the
+      Active Directory account
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ActiveDirectory/Domain/DNS/Name
+
+  DirectoryNetBIOSName:
+    Description: The SSM Parameter containing the netbios name of the
+      Active Directory account
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ActiveDirectory/Domain/NetBIOS/Name
+
+  OrganizationalUnitName:
+    Description: The full DN of the Organizational Unit where the AppStream
+      objects will be stored.  The bind user should have appropriate
+      permissions granted in Active Directory over this OU as defined in
+      https://docs.aws.amazon.com/appstream2/latest/developerguide/active-directory-admin.html#active-directory-permissions
+    Type: String
+    Default: ou=AppStream,dc=ad,dc=example,dc=com
+
+  DirectoryAdministratorSecret:
+    Description:  The SSM Parameter containing the identifier of the Secrets
+      Manager secret which houses the administrative user with permissions
+      to manage objects in the above OU.  This defaults to the general
+      DomainAdmin account for ease of deployment but should be changed to
+      a dedicated AppStream user account for production use.
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ActiveDirectory/DomainAdmin/SecretsManager/Secret/Id
+
+  CreateAppStreamServiceRoles:
+    Description: Various roles are necessary per account to enable AppStream
+      to function as required.  These are created automatically when the 
+      quick link AppStream services are used.  For a new account where
+      AppStream has never been deployed, select YES to create these roles.
+      If they have already been created in the account in some other way, 
+      select NO.
+    Type: String
+    Default: YES
+    AllowedValues:
+      - YES
+      - NO
+
+Conditions:
+  CreateAppStreamRoles:
+    !Equals [YES, !Ref CreateAppStreamServiceRoles]
+
+Resources:
+  ParamAppStreamOrganizationalUnit:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The SSM Parameter containing the OU (full DN) where the
+        AppStream objects will be stored.
+      Name: /AppStream/Default/OrganizationalUnit/DistinguishedName
+      Value: !Ref OrganizationalUnitName
+      Type: String
+
+  # IAM Role for AppStream 2.0 to use, necessary to have one (and only one)
+  # for each account.
+  # TODO: Add two additional service roles
+  AmazonAppStreamServiceAccessRole:
+    Condition: CreateAppStreamRoles
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AmazonAppStreamServiceAccess
+      Path: /service-role/
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - appstream.amazonaws.com
+            Action: sts:AssumeRole  
+
+  # S3 bucket for storing software installation images
+  SoftwareS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref SoftwareS3BucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Suspended
+
+  ParamAppStreamSoftwareBucketName:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The SSM Parameter containing the s3 bucket created
+        for AppStream software.
+      Name: /AppStream/Default/S3/Bucket/Name
+      Value: !Ref SoftwareS3BucketName
+      Type: String
+
+  # IAM Role for AppStream 2.0 to use for all image builder processes and such
+  CustomAppStreamRole:
+    Type: AWS::IAM::Role
+    DependsOn: SoftwareS3Bucket
+    Properties:
+      RoleName: CustomAppStreamServiceAccess
+      Description: IAM Role for AppStream 2.0 to access required services
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - appstream.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: SoftwareS3BucketRead
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                - s3:Get*
+                - s3:List*
+                Resource: !Sub 'arn:aws:s3:::${SoftwareS3Bucket}'
+
+  ParamAppStreamRole:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The SSM Parameter containing the Role created
+        for AppStream.  Custom permissions may be added to this role.
+      Name: /AppStream/Default/IAM/Role/Id
+      Value: !Ref CustomAppStreamRole
+      Type: String
+
+  AppStreamSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: AppStreamSecurityGroup
+      GroupDescription: "Security group used for appstream deployment"
+      VpcId: !Ref Vpc
+
+  ParamAppStreamSecurityGroup:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The SSM Parameter containing the SecurityGroup created
+        for AppStream.  Custom permissions may be added to this security group.
+      Name: /AppStream/Default/EC2/SecurityGroup/Id
+      Value: !Ref AppStreamSecurityGroup
+      Type: String
+
+  # Use the user id and password from the secrets manager admin user to connect
+  # to the Active Directory instance.  Use the NetBios\username format.
+  DirectoryConfig:
+    Type: AWS::AppStream::DirectoryConfig
+    Properties: 
+      DirectoryName: !Ref DirectoryName
+      OrganizationalUnitDistinguishedNames: 
+        - !Ref OrganizationalUnitName
+      ServiceAccountCredentials: 
+        AccountName: !Sub
+          - '${DirectoryNetBIOSName}\${UserName}'
+          - UserName: 
+              Fn::Sub: '{{resolve:secretsmanager:${DirectoryAdministratorSecret}:SecretString:username}}'
+        AccountPassword: !Sub '{{resolve:secretsmanager:${DirectoryAdministratorSecret}:SecretString:password}}'

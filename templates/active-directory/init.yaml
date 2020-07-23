@@ -4,24 +4,21 @@ Description: This template creates the resources used by all of the domain
   automation documents, etc. and exports a number of properties for consumption 
   by domain-controller.yaml
 Parameters:
-  Env:
-    Type: String
-    Default: ENV
   CfnScriptsUrl:
     Description: The folder containing the scripts used by the AD provisioning
     Type: String
   CfnArn:
     Description: The SSM parameter with the full ARN of the templates bucket
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /ENV/Bootstrap/CloudFormation/S3/Bucket/FullArn
+    Default: /Bootstrap/CloudFormation/S3/Bucket/FullArn
   Vpc:
     Description: The SSM parameter containing the id for the AWS VPC
     Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
-    Default: /ENV/Foundation/EC2/VPC/Id
+    Default: /Foundation/EC2/VPC/Id
   VpcCidrBlock:
     Description: The SSM parameter containing the CIDR block for the AWS VPC
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /ENV/Foundation/EC2/VPC/CidrBlock
+    Default: /Foundation/EC2/VPC/CidrBlock
   AdminUser:
     Default: DomainAdmin
     Description: User name for existing account that is a Domain Administrator.
@@ -98,7 +95,7 @@ Resources:
   QuickStartLogs:
     Type: AWS::Logs::LogGroup
     Properties: 
-      LogGroupName: !Sub '/${Env}/active-directory/domain-controllers'
+      LogGroupName: !Sub '/active-directory/domain-controllers'
       RetentionInDays: 30
   AWSQuickstartActiveDirectoryDS:
     Type: AWS::SSM::Document
@@ -426,7 +423,7 @@ Resources:
   DomainMembersSG: 
     Type: AWS::EC2::SecurityGroup
     Properties: 
-      GroupDescription: !Sub 'Domain Members ${Env}'
+      GroupDescription: !Sub 'Domain Members '
       VpcId: !Ref Vpc
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -579,114 +576,90 @@ Resources:
   ParamRemoteDomainControllerIP1:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: !Sub /${Env}${xDCRemoteIp1}
+      Name: !Sub ${xDCRemoteIp1}
       Description: The first of two domain controllers hosted on 
         customer premises
       Value: !Ref DCRemoteIp1
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamRemoteDomainControllerIP2:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: !Sub /${Env}${xDCRemoteIp2}
+      Name: !Sub ${xDCRemoteIp2}
       Description: The second of two domain controllers hosted on 
         customer premises
       Value: !Ref DCRemoteIp2
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamRemoteDomainControllerCidr1:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: !Sub /${Env}${xDCRemoteCidr1}
+      Name: !Sub ${xDCRemoteCidr1}
       Description: The CIDR block for first of two domain controllers 
         hosted on customer premises
       Value: !Sub ${DCRemoteIp1}/32
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamRemoteDomainControllerCidr2:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: !Sub /${Env}${xDCRemoteCidr2}
+      Name: !Sub ${xDCRemoteCidr2}
       Description: The CIDR block for the second of two domain controllers 
         hosted on customer premises
       Value: !Sub ${DCRemoteIp2}/32
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamControllersSG:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: !Sub /${Env}${xDCSecurityGroup}
+      Name: !Sub ${xDCSecurityGroup}
       Description: The security group associated with all of the 
         domain controllers hosted in AWS
       Value: !Ref DomainControllersSG
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamMembersSG:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: !Sub /${Env}${xDMSecurityGroup}
+      Name: !Sub ${xDMSecurityGroup}
       Description: The security group associated with all domain members
       Value: !Ref DomainMembersSG
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamAWSQuickstartActiveDirectoryDS:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: !Sub /${Env}${xDCAutomationDoc}
+      Name: !Sub ${xDCAutomationDoc}
       Description: The SSM automation document associated with 
         the domain controllers.
       Value: !Ref AWSQuickstartActiveDirectoryDS
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamDomainDNSName:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: !Sub /${Env}${xDomain}
+      Name: !Sub ${xDomain}
       Description: The active directory root dns domain (i.e. ad.example.com)
       Value: !Ref Domain
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamDomainNetBIOSName:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: !Sub /${Env}${xNetBIOS}
+      Name: !Sub ${xNetBIOS}
       Description: The active directory DomainNetBIOSName
       Value: !Ref NetBIOS
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamADAdminSecrets:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: !Sub /${Env}${xAdminSecret}
+      Name: !Sub ${xAdminSecret}
       Description: The active directory ADAdminSecrets
       Value: !Ref ADAdminSecrets
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamAutomationAssumeRole:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: !Sub /${Env}${xDCAssumeRole}
+      Name: !Sub ${xDCAssumeRole}
       Description: The active directory AutomationAssumeRole
       Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${ADRole}'
       Type: String
-      Tags:
-        Environment: !Ref Env
   ParamADServerProfile:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: !Sub /${Env}${xDCInstProfile}
+      Name: !Sub ${xDCInstProfile}
       Description: The active directory ADServerProfile
       Value: !Ref ADServerProfile
       Type: String
-      Tags:
-        Environment: !Ref Env

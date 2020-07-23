@@ -5,7 +5,6 @@ Metadata:
       - Label:
           default: Environment Configuration
         Parameters:
-          - Env
           - CfnUrl
       - Label:
           default: Network Configuration
@@ -18,8 +17,6 @@ Metadata:
           - DnsInternalZoneName
           - DnsExternalZoneName
     ParameterLabels:
-      Env:
-        default: Environment Name
       CfnUrl:
         default: CloudFormation S3 Url SSM Parameter
       DnsInternalZoneName:
@@ -27,21 +24,12 @@ Metadata:
       DnsExternalZoneName:
         default: External Zone Name
 Parameters:
-  Env:
-    Description: The environment associated with this network (i.e. DEV, PRD)
-    Type: String
-    Default: DEV
-    AllowedValues:
-      - DEV
-      - TST
-      - STG
-      - PRD
   CfnUrl:
     Description: The key for the SSM parameter containing the full url with 
       of the S3 bucket with all of the CloudFormation templates and supporting
       scripts and other components.
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /DEV/Bootstrap/CloudFormation/S3/Bucket/Url
+    Default: /Bootstrap/CloudFormation/S3/Bucket/Url
   VpcCidrPrefix:
     Description: >-
       The first two octets from a RFC1918 /16 address (i.e. 10.0 if targeting
@@ -131,7 +119,6 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,Network,Vpc]
       Parameters:
-        Env: !Ref Env
         VpcCidrPrefix: !Ref VpcCidrPrefix
         AvailabilityZone1: !Sub '${AWS::Region}a'
         AvailabilityZone2: !Sub '${AWS::Region}b'
@@ -152,13 +139,8 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,Network,NatGateway]
       Parameters:
-        Env: !Ref Env
-        Subnet1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,PublicSubnet1]
-        Subnet2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,PublicSubnet2]
+        Subnet1: !FindInMap [Keys,Foundation,PublicSubnet1]
+        Subnet2: !FindInMap [Keys,Foundation,PublicSubnet2]
         xNatGateway1: !FindInMap [Keys,Foundation,NatGateway1]
         xNatGateway2: !FindInMap [Keys,Foundation,NatGateway2]
     DependsOn:
@@ -170,16 +152,9 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,Network,NatGatewayRouting]
       Parameters:
-        Env: !Ref Env
-        Vpc: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,Vpc]
-        NatGateway1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,NatGateway1]
-        NatGateway2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,NatGateway2]
+        Vpc: !FindInMap [Keys,Foundation,Vpc]
+        NatGateway1: !FindInMap [Keys,Foundation,NatGateway1]
+        NatGateway2: !FindInMap [Keys,Foundation,NatGateway2]
         xRouteTable1: !FindInMap [Keys,Foundation,NatRouteTable1]
         xRouteTable2: !FindInMap [Keys,Foundation,NatRouteTable2]
     DependsOn:
@@ -193,28 +168,15 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,Network,Subnet]
       Parameters:
-        Env: !Ref Env
         MapPublicIpOnLaunch: true
-        CidrPrefix: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,VpcCidrPrefix]
+        CidrPrefix: !FindInMap [Keys,Foundation,VpcCidrPrefix]
         CidrSuffix1: 64.0/19
         CidrSuffix2: 96.0/19
-        Vpc: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,Vpc]
-        AvailabilityZone1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone1]
-        AvailabilityZone2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone2]
-        RouteTable1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,PublicRouteTable]
-        RouteTable2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,PublicRouteTable]
+        Vpc: !FindInMap [Keys,Foundation,Vpc]
+        AvailabilityZone1: !FindInMap [Keys,Foundation,AvailabilityZone1]
+        AvailabilityZone2: !FindInMap [Keys,Foundation,AvailabilityZone2]
+        RouteTable1: !FindInMap [Keys,Foundation,PublicRouteTable]
+        RouteTable2: !FindInMap [Keys,Foundation,PublicRouteTable]
         xCidr1: !FindInMap [Keys,Foundation,PublicCidr1]
         xCidr2: !FindInMap [Keys,Foundation,PublicCidr2]
         xSubnet1: !FindInMap [Keys,Foundation,PublicSubnet1]
@@ -228,27 +190,14 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,Network,Subnet]
       Parameters:
-        Env: !Ref Env
-        CidrPrefix: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,VpcCidrPrefix]
+        CidrPrefix: !FindInMap [Keys,Foundation,VpcCidrPrefix]
         CidrSuffix1: 128.0/19
         CidrSuffix2: 160.0/19
-        Vpc: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,Vpc]
-        AvailabilityZone1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone1]
-        AvailabilityZone2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone2]
-        RouteTable1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,NatRouteTable1]
-        RouteTable2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,NatRouteTable2]
+        Vpc: !FindInMap [Keys,Foundation,Vpc]
+        AvailabilityZone1: !FindInMap [Keys,Foundation,AvailabilityZone1]
+        AvailabilityZone2: !FindInMap [Keys,Foundation,AvailabilityZone2]
+        RouteTable1: !FindInMap [Keys,Foundation,NatRouteTable1]
+        RouteTable2: !FindInMap [Keys,Foundation,NatRouteTable2]
         xCidr1: !FindInMap [Keys,Foundation,NatCidr1]
         xCidr2: !FindInMap [Keys,Foundation,NatCidr2]
         xSubnet1: !FindInMap [Keys,Foundation,NatSubnet1]
@@ -262,27 +211,14 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,Network,Subnet]
       Parameters:
-        Env: !Ref Env
-        CidrPrefix: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,VpcCidrPrefix]
+        CidrPrefix: !FindInMap [Keys,Foundation,VpcCidrPrefix]
         CidrSuffix1: 192.0/19
         CidrSuffix2: 224.0/19
-        Vpc: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,Vpc]
-        AvailabilityZone1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone1]
-        AvailabilityZone2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone2]
-        RouteTable1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,PrivateRouteTable]
-        RouteTable2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,PrivateRouteTable]
+        Vpc: !FindInMap [Keys,Foundation,Vpc]
+        AvailabilityZone1: !FindInMap [Keys,Foundation,AvailabilityZone1]
+        AvailabilityZone2: !FindInMap [Keys,Foundation,AvailabilityZone2]
+        RouteTable1: !FindInMap [Keys,Foundation,PrivateRouteTable]
+        RouteTable2: !FindInMap [Keys,Foundation,PrivateRouteTable]
         xCidr1: !FindInMap [Keys,Foundation,PrivateCidr1]
         xCidr2: !FindInMap [Keys,Foundation,PrivateCidr2]
         xSubnet1: !FindInMap [Keys,Foundation,PrivateSubnet1]
@@ -298,27 +234,14 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,Network,Subnet]
       Parameters:
-        Env: !Ref Env
-        CidrPrefix: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,VpcCidrPrefix]
+        CidrPrefix: !FindInMap [Keys,Foundation,VpcCidrPrefix]
         CidrSuffix1: 0.0/28
         CidrSuffix2: 0.16/28
-        Vpc: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,Vpc]
-        AvailabilityZone1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone1]
-        AvailabilityZone2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,AvailabilityZone2]
-        RouteTable1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,PrivateRouteTable]
-        RouteTable2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,PrivateRouteTable]
+        Vpc: !FindInMap [Keys,Foundation,Vpc]
+        AvailabilityZone1: !FindInMap [Keys,Foundation,AvailabilityZone1]
+        AvailabilityZone2: !FindInMap [Keys,Foundation,AvailabilityZone2]
+        RouteTable1: !FindInMap [Keys,Foundation,PrivateRouteTable]
+        RouteTable2: !FindInMap [Keys,Foundation,PrivateRouteTable]
         xCidr1: !FindInMap [Keys,Foundation,TransitGatewayCidr1]
         xCidr2: !FindInMap [Keys,Foundation,TransitGatewayCidr2]
         xSubnet1: !FindInMap [Keys,Foundation,TransitGatewaySubnet1]
@@ -333,17 +256,10 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,Network,TransitGateway]
       Parameters:
-        Env: !Ref Env
         TransitGatewayAsn: !Ref TransitGatewayAsn
-        Vpc: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,Vpc]
-        Subnet1: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,TransitGatewaySubnet1]
-        Subnet2: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,TransitGatewaySubnet2]
+        Vpc: !FindInMap [Keys,Foundation,Vpc]
+        Subnet1: !FindInMap [Keys,Foundation,TransitGatewaySubnet1]
+        Subnet2: !FindInMap [Keys,Foundation,TransitGatewaySubnet2]
         xTransitGatewayRouteTable: !FindInMap [Keys,Foundation,TGRouteTable]
         xTransitGateway: !FindInMap [Keys,Foundation,TransitGateway]
     DependsOn:
@@ -357,12 +273,9 @@ Resources:
         - ${CfnUrl}${Arg1}
         - Arg1: !FindInMap [Templates,Dns,HostedZone]
       Parameters:
-        Env: !Ref Env
         ExternalZoneName: !Ref DnsExternalZoneName
         InternalZoneName: !Ref DnsInternalZoneName
-        Vpc: !Sub
-          - /${Env}${Arg1}
-          - Arg1: !FindInMap [Keys,Foundation,Vpc]
+        Vpc: !FindInMap [Keys,Foundation,Vpc]
         xExternalHostedZone: !FindInMap [Keys,Foundation,ExternalHostedZone]
         xInternalHostedZone: !FindInMap [Keys,Foundation,InternalHostedZone]
         xExternalHostedZoneName: !FindInMap [Keys,Foundation,ExternalZoneName]

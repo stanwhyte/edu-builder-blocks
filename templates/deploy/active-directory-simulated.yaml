@@ -14,7 +14,6 @@ Metadata:
       - Label:
           default: Environment Configuration
         Parameters:
-          - Env
           - CfnUrl
           - CfnBucketRegion
           - CfnBucketName
@@ -41,8 +40,6 @@ Metadata:
           - DomainAdminUser
           - DomainAdminPassword
     ParameterLabels:
-      Env:
-        default: Connected Environment
       ADServer1InstanceType:
         default: Domain Controller 1 Instance Type
       ADServer1NetBIOSName:
@@ -68,41 +65,30 @@ Metadata:
       VpcCidrPrefix:
         default: VPC CIDR Prefix
 Parameters:
-  Env:
-    Description: The environment to which the new simulated Active Directory
-      environment will be connected.  This environment must have the
-      foundation or equivalent module deployed with an appropriate VPC.
-    Type: String
-    Default: DEV
-    AllowedValues:
-      - DEV
-      - TST
-      - STG
-      - PRD
   CfnUrl:
     Description: The key for the SSM parameter containing the full url 
       of the S3 bucket with all of the CloudFormation templates and supporting
       scripts and other components.
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /DEV/Bootstrap/CloudFormation/S3/Bucket/Url
+    Default: /Bootstrap/CloudFormation/S3/Bucket/Url
   CfnBucketRegion:
     Description: The key for the SSM parameter containing the region 
       of the S3 bucket with all of the CloudFormation templates and supporting
       scripts and other components.
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /DEV/Bootstrap/CloudFormation/S3/Bucket/Region
+    Default: /Bootstrap/CloudFormation/S3/Bucket/Region
   CfnBucketName:
     Description: The key for the SSM parameter containing the name 
       of the S3 bucket with all of the CloudFormation templates and supporting
       scripts and other components.
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /DEV/Bootstrap/CloudFormation/S3/Bucket/Name
+    Default: /Bootstrap/CloudFormation/S3/Bucket/Name
   CfnKeyPrefix:
     Description: The key for the SSM parameter containing the key prefix 
       of the S3 bucket with all of the CloudFormation templates and supporting
       scripts and other components.
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /DEV/Bootstrap/CloudFormation/S3/Bucket/KeyPrefix
+    Default: /Bootstrap/CloudFormation/S3/Bucket/KeyPrefix
   ADServer1InstanceType:
     AllowedValues:
       - t2.large
@@ -246,10 +232,9 @@ Resources:
     Properties:
       TemplateURL: !Sub '${CfnUrl}templates/active-directory/simulated-connection.yaml'
       Parameters:
-        Env: !Ref Env
-        RemoteCidrBlock: !Sub '/${Env}/Foundation/EC2/VPC/CidrBlock'
-        TransitGatewayId: !Sub '/${Env}/Foundation/EC2/TransitGateway/Id'
-        TransitGatewayRouteTable: !Sub '/${Env}/Foundation/TransitGateway/EC2/RouteTable/Id'
+        RemoteCidrBlock: '/Foundation/EC2/VPC/CidrBlock'
+        TransitGatewayId: '/Foundation/EC2/TransitGateway/Id'
+        TransitGatewayRouteTable: '/Foundation/TransitGateway/EC2/RouteTable/Id'
         SecurityGroup: !GetAtt ADStack.Outputs.DCSecurityGroup
         VpcId: !GetAtt VPCStack.Outputs.VPCID
         Subnet1: !GetAtt VPCStack.Outputs.PrivateSubnet1AID
