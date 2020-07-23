@@ -27,6 +27,7 @@ echo 'Initialize the submodules'
 echo '-------------------------'
 cd $dir
 git submodule update --merge --remote --init --recursive
+git submodule update --init --recursive
 echo "Submodules initialized"
 
 echo
