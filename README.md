@@ -56,7 +56,7 @@ Deployment
 
 Note that for each of the steps below, the step must complete before initiating the subsequent step.  
 1. Use the `./scripts/deploy.sh -d /path/to/project` script to synchronize the current project with the S3 bucket.
-1. Deploy the [Bootstrap](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https%3A%2F%2FBUCKET.s3.amazonaws.com%2Fcfn%2Ftemplates%2Fdeploy%2Fbootstrap.yaml&stackName=bootstrap&param_BucketName=BUCKET&param_BucketRegion=REGION) stack to populate the SSM Parameter Store with the location of the CloudFormation templates and supporting code.
+1. Deploy the [Bootstrap](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https%3A%2F%2FBUCKET.s3.amazonaws.com%2Fcfn%2Ftemplates%2Fdeploy%2Fbootstrap.yaml&stackName=bootstrap) stack to populate the SSM Parameter Store with the location of the CloudFormation templates and supporting code.
 1. Deploy the [Foundation](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https%3A%2F%2FBUCKET.s3.amazonaws.com%2Fcfn%2Ftemplates%2Fdeploy%2Ffoundation.yaml&stackName=foundation) stack and complete manual configuration changes as appropriate:
     * Configure the DNS authoritative name server for the external zone to delegate responsibility to AWS.
 1. Deploy the [Simulated Active Directory](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https%3A%2F%2FBUCKET.s3.amazonaws.com%2Fcfn%2Ftemplates%2Fdeploy%2Factive-directory-simulated.yaml&stackName=ad-simulated) stack to simulate the on-premises Active Directory environment.
