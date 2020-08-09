@@ -79,6 +79,6 @@ fi
 echo
 echo 'Replace the BUCKET and REGION text in the README.md with values'
 echo '---------------------------------------------------------------'
-sed "s/BUCKET/$bucket/g" "$dir/README.md"
-sed "s/REGION/$region/g" "$dir/README.md"
+sed -i "s/BUCKET/$bucket/g" "$dir/README.md"
+sed -i "s/REGION/$region/g" "$dir/README.md"
 echo -e "Completed replacement in README.md with BUCKET->$bucket and REGION->$region"
