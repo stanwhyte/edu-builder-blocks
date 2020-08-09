@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  CfnUrl:
+    Description: The key for the SSM parameter containing the full url with
+      of the S3 bucket with all of the CloudFormation templates and supporting
+      scripts and other components.
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /Bootstrap/CloudFormation/S3/Bucket/Url
+
+  SoftwareS3BucketName:
+    Description: Globally-unique DNS name for S3 bucket for storing software 
+      to install via Image Builder
+    Type: String
+    AllowedPattern: ^[a-z][a-z0-9\-]+$
+
+  OrganizationalUnitName:
+    Description: The full DN of the Organizational Unit where the AppStream
+      objects will be stored.  The bind user should have appropriate
+      permissions granted in Active Directory over this OU as defined in
+      https://docs.aws.amazon.com/appstream2/latest/developerguide/active-directory-admin.html#active-directory-permissions
+    Type: String
+    Default: ou=AppStream,dc=ad,dc=EXAMPLE,dc=com
+
+  CreateAppStreamServiceRoles:
+    Description: Various roles are necessary per account to enable AppStream
+      to function as required.  These are created automatically when the 
+      quick link AppStream services are used.  For a new account where
+      AppStream has never been deployed, select YES to create these roles.
+      If they have already been created in the account in some other way, 
+      select NO.
+    Type: String
+    Default: YES
+    AllowedValues:
+      - YES
+      - NO
+
+Resources:
+  Init:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: templates/appstream/init.yaml
+      Parameters:
+        OrganizationalUnitName: !Ref OrganizationalUnitName
+        SoftwareS3BucketName: !Ref SoftwareS3BucketName
+        CreateAppStreamServiceRoles: !Ref CreateAppStreamServiceRoles
+
+  # The first image builder is to test basic images, with no special graphics
+  # or compute capabilities. 
+  BasicImageBuilder:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: templates/appstream/image-builder.yaml
+      Parameters:
+        ImageBuilderName: Basic
+        InstanceType: stream.standard.medium
+        SourceImageName: AppStream-WinServer2019-07-16-2020
+    DependsOn:
+      - Init        

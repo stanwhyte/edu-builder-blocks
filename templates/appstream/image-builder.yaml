@@ -1,0 +1,101 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  ImageBuilderName:
+    Description: The name of the AppStream ImageBuilder.
+    Type: String
+    Default: Default
+    MinLength: 1
+    MaxLength: 32
+    AllowedPattern: '[a-zA-Z0-9]+'
+    ConstraintDescription: Must be between 1 and 32 alphanumeric characters.
+
+  InstanceType:
+    Description: The instance type to use when launching image builder instance.
+    Type: String
+    Default: stream.standard.medium
+    AllowedValues:
+      - stream.standard.medium
+      - stream.standard.large
+      - stream.compute.large
+      - stream.compute.xlarge
+      - stream.compute.2xlarge
+      - stream.compute.4xlarge
+      - stream.compute.8xlarge
+      - stream.memory.large
+      - stream.memory.xlarge
+      - stream.memory.2xlarge
+      - stream.memory.4xlarge
+      - stream.memory.8xlarge
+      - stream.memory.z1d.large
+      - stream.memory.z1d.xlarge
+      - stream.memory.z1d.2xlarge
+      - stream.memory.z1d.3xlarge
+      - stream.memory.z1d.6xlarge
+      - stream.memory.z1d.12xlarge
+      - stream.graphics-design.large
+      - stream.graphics-design.xlarge
+      - stream.graphics-design.2xlarge
+      - stream.graphics-design.4xlarge
+      - stream.graphics-desktop.2xlarge
+      - stream.graphics-pro.4xlarge
+      - stream.graphics-pro.8xlarge
+      - stream.graphics-pro.16xlarge
+
+  SourceImageName:
+    Description: The AppStream image used as the starting image.  This list is
+      updated frequently, and valid values may be found in the AppStream Images
+      list in the console.
+      Note that the instance family must match the family of the instance type
+      and these must also match the settings used to launch the fleet later.
+    Type: String
+    Default: AppStream-WinServer2019-07-16-2020 
+
+  PrivateSubnet:
+    Description: The SSM parameter containing the subnet to be used
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+    Default: /Foundation/NAT/1/EC2/Subnet/Id
+
+  DirectoryName:
+    Description: The SSM Parameter containing the domain name (dns) of the
+      Active Directory account
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ActiveDirectory/Domain/DNS/Name
+
+  OrganizationalUnitName:
+    Description: The SSM Parameter containing the OU (full DN) where the
+      AppStream objects will be stored.  
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /AppStream/OrganizationalUnit/DistinguishedName
+
+  AppStreamSecurityGroup:
+    Description: The SSM Parameter containing the SecurityGroup created 
+      for AppStream.  Custom permissions may be added to this security group.
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /AppStream/EC2/SecurityGroup/Id
+
+  DomainMemberSecurityGroup:
+    Description: The SSM Parameter containing the SecurityGroup created 
+      for Active Directory Domain Members.  This group contains the permissions
+      allowing interaction with the Domain Controllers.
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ActiveDirectory/DomainMember/EC2/SecurityGroup/Id
+
+Resources:
+  ImageBuilder:
+    Type: AWS::AppStream::ImageBuilder
+    Properties: 
+      Name: !Sub "${ImageBuilderName}"
+      Description: !Sub "AppStream 2.0 ImageBuilder created for ${ImageBuilderName} by ${AWS::StackName}"
+      DisplayName: !Sub "${ImageBuilderName} ImageBuilder"
+      DomainJoinInfo: 
+        DirectoryName: !Ref DirectoryName
+        OrganizationalUnitDistinguishedName: !Ref OrganizationalUnitName
+      EnableDefaultInternetAccess: false
+      InstanceType: !Ref InstanceType
+      ImageName: !Ref SourceImageName
+      VpcConfig: 
+        SecurityGroupIds:
+          - !Ref DomainMemberSecurityGroup
+          - !Ref AppStreamSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet

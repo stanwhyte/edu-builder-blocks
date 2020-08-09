@@ -48,7 +48,7 @@ Parameters:
     Description: The root domain that customers will finally see in their 
       browser.  Used to provision an internal Route53 hosted zone.
     Type: String
-    Default: example.com
+    Default: demo.EXAMPLE.com
   DnsExternalZoneName:
     Description: An external (internet-facing) DNS name used to create a 
       Route53 hosted zone for which AWS will be delegated responsibility.
@@ -57,7 +57,7 @@ Parameters:
       pointing from the *real* domain (i.e. foo.example.com) to the 
       domain created here (i.e. foo.dev.aws.example.com).
     Type: String
-    Default: dev.aws.example.com
+    Default: demo.EXAMPLE.com
 Mappings:
   Templates:
     Network:

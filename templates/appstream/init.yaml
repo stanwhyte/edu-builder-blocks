@@ -1,5 +1,31 @@
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
+  OrganizationalUnitName:
+    Description: The full DN of the Organizational Unit where the AppStream
+      objects will be stored.  The bind user should have appropriate
+      permissions granted in Active Directory over this OU as defined in
+      https://docs.aws.amazon.com/appstream2/latest/developerguide/active-directory-admin.html#active-directory-permissions
+    Type: String
+
+  SoftwareS3BucketName:
+    Description: Globally-unique DNS name for S3 bucket for storing software 
+      to install via Image Builder
+    Type: String
+    AllowedPattern: ^[a-z][a-z0-9\-]+$
+
+  CreateAppStreamServiceRoles:
+    Description: Various roles are necessary per account to enable AppStream
+      to function as required.  These are created automatically when the 
+      quick link AppStream services are used.  For a new account where
+      AppStream has never been deployed, select YES to create these roles.
+      If they have already been created in the account in some other way, 
+      select NO.
+    Type: String
+    Default: YES
+    AllowedValues:
+      - YES
+      - NO
+
   Vpc:
     Description: The SSM parameter containing the id for the AWS VPC
     Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
@@ -15,13 +41,6 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
     Default: /Foundation/NAT/2/EC2/Subnet/Id
 
-  SoftwareS3BucketName:
-    Description: Globally-unique DNS name for S3 bucket for storing software 
-      to install via Image Builder
-    Type: String
-    Default: example-dev-appstream-software
-    AllowedPattern: ^[a-z][a-z0-9\-]+$
-
   DirectoryName:
     Description: The SSM Parameter containing the domain name (dns) of the
       Active Directory account
@@ -34,14 +53,6 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<String>
     Default: /ActiveDirectory/Domain/NetBIOS/Name
 
-  OrganizationalUnitName:
-    Description: The full DN of the Organizational Unit where the AppStream
-      objects will be stored.  The bind user should have appropriate
-      permissions granted in Active Directory over this OU as defined in
-      https://docs.aws.amazon.com/appstream2/latest/developerguide/active-directory-admin.html#active-directory-permissions
-    Type: String
-    Default: ou=AppStream,dc=ad,dc=example,dc=com
-
   DirectoryAdministratorSecret:
     Description:  The SSM Parameter containing the identifier of the Secrets
       Manager secret which houses the administrative user with permissions
@@ -51,36 +62,23 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<String>
     Default: /ActiveDirectory/DomainAdmin/SecretsManager/Secret/Id
 
-  CreateAppStreamServiceRoles:
-    Description: Various roles are necessary per account to enable AppStream
-      to function as required.  These are created automatically when the 
-      quick link AppStream services are used.  For a new account where
-      AppStream has never been deployed, select YES to create these roles.
-      If they have already been created in the account in some other way, 
-      select NO.
-    Type: String
-    Default: YES
-    AllowedValues:
-      - YES
-      - NO
-
 Conditions:
   CreateAppStreamRoles:
     !Equals [YES, !Ref CreateAppStreamServiceRoles]
 
 Resources:
+  # Parameter containing the OU passed into the stack
   ParamAppStreamOrganizationalUnit:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The SSM Parameter containing the OU (full DN) where the
         AppStream objects will be stored.
-      Name: /AppStream/Default/OrganizationalUnit/DistinguishedName
+      Name: /AppStream/OrganizationalUnit/DistinguishedName
       Value: !Ref OrganizationalUnitName
       Type: String
 
   # IAM Role for AppStream 2.0 to use, necessary to have one (and only one)
   # for each account.
-  # TODO: Add two additional service roles
   AmazonAppStreamServiceAccessRole:
     Condition: CreateAppStreamRoles
     Type: AWS::IAM::Role
@@ -111,12 +109,13 @@ Resources:
       VersioningConfiguration:
         Status: Suspended
 
+  # Export the S3 bucket name for use by other templates
   ParamAppStreamSoftwareBucketName:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The SSM Parameter containing the s3 bucket created
         for AppStream software.
-      Name: /AppStream/Default/S3/Bucket/Name
+      Name: /AppStream/S3/Bucket/Name
       Value: !Ref SoftwareS3BucketName
       Type: String
 
@@ -152,7 +151,7 @@ Resources:
     Properties:
       Description: The SSM Parameter containing the Role created
         for AppStream.  Custom permissions may be added to this role.
-      Name: /AppStream/Default/IAM/Role/Id
+      Name: /AppStream/IAM/Role/Id
       Value: !Ref CustomAppStreamRole
       Type: String
 
@@ -168,7 +167,7 @@ Resources:
     Properties:
       Description: The SSM Parameter containing the SecurityGroup created
         for AppStream.  Custom permissions may be added to this security group.
-      Name: /AppStream/Default/EC2/SecurityGroup/Id
+      Name: /AppStream/EC2/SecurityGroup/Id
       Value: !Ref AppStreamSecurityGroup
       Type: String
 

@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  AppStreamStackName:
+    Description: The name of the AppStream stack.
+    Type: String
+    Default: Default
+    MinLength: 1
+    MaxLength: 32
+    AllowedPattern: '[a-zA-Z0-9]+'
+    ConstraintDescription: Must be between 1 and 32 alphanumeric characters.
+
+  SamlProviderArn:
+    Description: The SSM Parameter containing the ARN of the SamlProvider
+      for this specific AppStream stack.
+    Default: /AppStream/Default/IAM/SamlProvider/Arn
+    Type: AWS::SSM::Parameter::Value<String> 
+
+  SessionRedirectURL:
+    Description: The URL that users are redirected to after their streaming 
+      session ends
+    Type: String
+    Default: http://www.amazon.com
+
+Resources:
+  # Application stack to present to user
+  AppStack:
+    Type: AWS::AppStream::Stack
+    Properties:
+      ApplicationSettings:
+        Enabled: true
+        SettingsGroup: AppStreamEUCSettings
+      Description: !Sub "AppStream 2.0 Stack created by ${AWS::StackName}"
+      DisplayName: !Sub "${AWS::StackName} Stack"
+      Name: !Ref AppStreamStackName
+      RedirectURL: !Ref SessionRedirectURL
+
+  # Export an SSM Parameter with the SSO Role created above.
+  ParamAppStack:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/AppStream/${AppStreamStackName}/Stack/Arn"
+      Description: !Sub "The arn for ${AppStreamStackName}"
+      Value: !Sub "arn:aws:appstream:${AWS::Region}:${AWS::AccountId}:stack/${AppStreamStackName}"
+      Type: String
+
+  StackSSORole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "SSO_AppStream_${AppStreamStackName}"
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated:
+                 - !Ref SamlProviderArn
+            Action: sts:AssumeRoleWithSAML
+            Condition:
+              StringEquals:
+                SAML:sub_type: persistent
+      Policies:
+        - PolicyName: AllowSamlUserToStack
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: appstream:Stream
+                Resource: !GetAtt ParamAppStack.Value
+                Condition:
+                  StringEquals:
+                    appstream:userId: "${saml:sub}"
+
+  # Export an SSM Parameter with the SSO Role created above.
+  ParamAppStackRoleArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/AppStream/${AppStreamStackName}/IAM/Role/Arn"
+      Description: !Sub "The role to be used for SSO with ${AppStreamStackName}"
+      Value: !GetAtt StackSSORole.Arn
+      Type: String

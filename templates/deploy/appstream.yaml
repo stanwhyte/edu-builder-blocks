@@ -1,14 +1,20 @@
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
-  PrivateSubnet1:
-    Description: The SSM parameter containing the first subnet to be used
-    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
-    Default: /Foundation/NAT/1/EC2/Subnet/Id
+  CfnUrl:
+    Description: The key for the SSM parameter containing the full url with
+      of the S3 bucket with all of the CloudFormation templates and supporting
+      scripts and other components.
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /Bootstrap/CloudFormation/S3/Bucket/Url
 
-  PrivateSubnet2:
-    Description: The SSM parameter containing the second subnet to be used
-    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
-    Default: /Foundation/NAT/2/EC2/Subnet/Id
+  AppStreamStackName:
+    Description: The name of the AppStream stack.
+    Type: String
+    Default: Default
+    MinLength: 1
+    MaxLength: 32
+    AllowedPattern: '[a-zA-Z0-9]+'
+    ConstraintDescription: Must be between 1 and 32 alphanumeric characters.
 
   FleetInstanceType:
     Description: The instance type to use when launching both fleet and image 
@@ -63,80 +69,34 @@ Parameters:
     Default: http://www.amazon.com
 
   FleetImageName:
-    Description: The SSM Parameter with the image used for the fleet.
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /AppStream/Default/ImageBuilder/Image/Id
-
-  DirectoryName:
-    Description: The SSM Parameter containing the domain name (dns) of the
-      Active Directory account
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /ActiveDirectory/Domain/DNS/Name
-
-  OrganizationalUnitName:
-    Description: The SSM Parameter containing the OU (full DN) where the
-      AppStream objects will be stored.  
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /AppStream/Default/OrganizationalUnit/DistinguishedName
-
-  AppStreamSecurityGroup:
-    Description: The SSM Parameter containing the SecurityGroup created 
-      for AppStream.  Custom permissions may be added to this security group.
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /AppStream/Default/EC2/SecurityGroup/Id
-
-  DomainMemberSecurityGroup:
-    Description: The SSM Parameter containing the SecurityGroup created 
-      for Active Directory Domain Members.  This group contains the permissions
-      allowing interaction with the Domain Controllers.
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /ActiveDirectory/DomainMember/EC2/SecurityGroup/Id
+    Description: The name of the AppStream 2.0 image to be used for the fleet.
+      i.e GraphicsImage.
+    Type: String
+    Default: BasicImage
 
 Resources:
-  # TODO: Add the auto scaling scenarios
-
-  # The fleet is deployed, and should use an image created and joined to the
-  # domain listed above.
-  MyFleet:
-    Type: AWS::AppStream::Fleet
-    CreationPolicy:
-      StartFleet: True
+  AppStack:
+    Type: AWS::CloudFormation::Stack
     Properties:
-      DomainJoinInfo:
-        DirectoryName: !Ref DirectoryName
-        OrganizationalUnitDistinguishedName: !Ref OrganizationalUnitName
-      ComputeCapacity:
-        DesiredInstances: !Ref DesiredFleetInstances
-      Description: !Sub "AppStream 2.0 Fleet created by ${AWS::StackName}"
-      DisplayName: !Sub "Fleet ${AWS::StackName}"
-      Name: !Sub "Fleet${AWS::StackName}"
-      EnableDefaultInternetAccess: false
-      FleetType: !Ref FleetTypeSetting
-      InstanceType: !Ref FleetInstanceType
-      ImageName: !Ref FleetImageName
-      VpcConfig:
-        SecurityGroupIds:
-          - !Ref DomainMemberSecurityGroup
-          - !Ref AppStreamSecurityGroup
-        SubnetIds:
-          - !Ref PrivateSubnet1
-          - !Ref PrivateSubnet2
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: templates/appstream/stack.yaml
+      Parameters:
+        AppStreamStackName: !Ref AppStreamStackName
+        SessionRedirectURL: !Ref SessionRedirectURL
+        SamlProviderArn: !Sub '/AppStream/${AppStreamStackName}/IAM/SamlProvider/Arn'
 
-  # Application stack to present to user
-  MyStack:
-    Type: AWS::AppStream::Stack
+  AppFleet:
+    Type: AWS::CloudFormation::Stack
     Properties:
-      ApplicationSettings:
-        Enabled: true
-        SettingsGroup: AppStreamEUCSettings
-      Description: !Sub "AppStream 2.0 Stack created by ${AWS::StackName}"
-      DisplayName: !Sub "Stack ${AWS::StackName}"
-      Name: !Sub "Stack${AWS::StackName}"
-      RedirectURL: !Ref SessionRedirectURL
-
-  # Associate the stack with the fleet
-  StackFleetAssociation:
-    Type: AWS::AppStream::StackFleetAssociation
-    Properties:
-      FleetName: !Ref MyFleet
-      StackName: !Ref MyStack
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: templates/appstream/fleet.yaml
+      Parameters:
+        AppStreamStackName: !Ref AppStreamStackName
+        FleetImageName: !Ref FleetImageName
+        FleetInstanceType: !Ref FleetInstanceType
+        DesiredFleetInstances: !Ref DesiredFleetInstances
+        FleetTypeSetting: !Ref FleetTypeSetting
+    DependsOn:
+      - AppStack

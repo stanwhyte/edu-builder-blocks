@@ -92,11 +92,11 @@ Parameters:
   Domain:
     Description: The domain name for the remote AD domain
     Type: String
-    Default: ad.example.com
+    Default: ad.EXAMPLE.com
   NetBIOS:
     Description: The netbios name for the remote AD domain
     Type: String
-    Default: example
+    Default: EXAMPLE
   AdminUser:
     Description: A login user in the forest with domain admin privileges
     Type: String
@@ -110,7 +110,7 @@ Parameters:
   LdapSubdomain:
     Description: The subdomain to be used for the AD LDAP load balancer
     Type: String
-    Default: ldap-dev
+    Default: ldap
   InstanceType:
     AllowedValues:
       - t2.large

@@ -23,7 +23,7 @@ Parameters:
       DNS name.  For example, if sso.example.com is the desired final domain, 
       only the "sso" portion would be listed here.
     Type: String
-    Default: sso-dev
+    Default: sso
     AllowedPattern: '[a-z][a-z0-9\-]*?'
     MinLength: 1
     MaxLength: 100

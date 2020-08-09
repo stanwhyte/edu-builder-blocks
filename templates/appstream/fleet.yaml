@@ -1,0 +1,134 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  AppStreamStackName:
+    Description: The name of the AppStream stack.
+    Type: String
+    Default: Default
+    MinLength: 1
+    MaxLength: 32
+    AllowedPattern: '[a-zA-Z0-9]+'
+    ConstraintDescription: Must be between 1 and 32 alphanumeric characters.
+
+  FleetImageName:
+    Description: The name of the AppStream 2.0 image to be used for the fleet.
+    Type: String
+    Default: BasicImage
+
+  FleetInstanceType:
+    Description: The instance type to use when launching fleet instances.
+      Note that this must match the same family as what was used in the
+      ImageBuilder process to create the image specified below.
+    Type: String
+    Default: stream.standard.medium
+    AllowedValues:
+      - stream.standard.medium
+      - stream.standard.large
+      - stream.compute.large
+      - stream.compute.xlarge
+      - stream.compute.2xlarge
+      - stream.compute.4xlarge
+      - stream.compute.8xlarge
+      - stream.memory.large
+      - stream.memory.xlarge
+      - stream.memory.2xlarge
+      - stream.memory.4xlarge
+      - stream.memory.8xlarge
+      - stream.memory.z1d.large
+      - stream.memory.z1d.xlarge
+      - stream.memory.z1d.2xlarge
+      - stream.memory.z1d.3xlarge
+      - stream.memory.z1d.6xlarge
+      - stream.memory.z1d.12xlarge
+      - stream.graphics-design.large
+      - stream.graphics-design.xlarge
+      - stream.graphics-design.2xlarge
+      - stream.graphics-design.4xlarge
+      - stream.graphics-desktop.2xlarge
+      - stream.graphics-pro.4xlarge
+      - stream.graphics-pro.8xlarge
+      - stream.graphics-pro.16xlarge
+
+  DesiredFleetInstances:
+    Description: The Desired Compute Capacity for the Fleet
+    Type: Number
+    Default: 2
+
+  FleetTypeSetting:
+    Description: Whether the AppStream fleet will be always-on or on-demand
+    Type: String
+    Default: ON_DEMAND
+    AllowedValues:
+      - ON_DEMAND
+      - ALWAYS_ON
+
+  PrivateSubnet1:
+    Description: The SSM parameter containing the first subnet to be used
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+    Default: /Foundation/NAT/1/EC2/Subnet/Id
+
+  PrivateSubnet2:
+    Description: The SSM parameter containing the second subnet to be used
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+    Default: /Foundation/NAT/2/EC2/Subnet/Id
+
+  DirectoryName:
+    Description: The SSM Parameter containing the domain name (dns) of the
+      Active Directory account
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ActiveDirectory/Domain/DNS/Name
+
+  OrganizationalUnitName:
+    Description: The SSM Parameter containing the OU (full DN) where the
+      AppStream objects will be stored.  
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /AppStream/OrganizationalUnit/DistinguishedName
+
+  AppStreamSecurityGroup:
+    Description: The SSM Parameter containing the SecurityGroup created 
+      for AppStream.  Custom permissions may be added to this security group.
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /AppStream/EC2/SecurityGroup/Id
+
+  DomainMemberSecurityGroup:
+    Description: The SSM Parameter containing the SecurityGroup created 
+      for Active Directory Domain Members.  This group contains the permissions
+      allowing interaction with the Domain Controllers.
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ActiveDirectory/DomainMember/EC2/SecurityGroup/Id
+
+Resources:
+  # The fleet is deployed, and should use an image created and joined to the
+  # domain listed above.
+  AppFleet:
+    Type: AWS::AppStream::Fleet
+    CreationPolicy:
+      StartFleet: True
+    Properties:
+      DomainJoinInfo:
+        DirectoryName: !Ref DirectoryName
+        OrganizationalUnitDistinguishedName: !Ref OrganizationalUnitName
+      ComputeCapacity:
+        DesiredInstances: !Ref DesiredFleetInstances
+      Description: !Sub "AppStream 2.0 Fleet created by ${AWS::StackName}"
+      DisplayName: !Sub "${AppStreamStackName} Fleet"
+      Name: !Sub "${AppStreamStackName}Fleet"
+      EnableDefaultInternetAccess: false
+      FleetType: !Ref FleetTypeSetting
+      InstanceType: !Ref FleetInstanceType
+      ImageName: !Ref FleetImageName
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref DomainMemberSecurityGroup
+          - !Ref AppStreamSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+
+  # Associate the stack with the fleet
+  StackFleetAssociation:
+    Type: AWS::AppStream::StackFleetAssociation
+    Properties:
+      FleetName: !Ref AppFleet
+      StackName: !Ref AppStreamStackName
+    DependsOn:
+      - AppFleet
