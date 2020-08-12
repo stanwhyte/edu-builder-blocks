@@ -1,81 +1,65 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Metadata:
-  AWS::CloudFormation::Interface:
-    ParameterGroups:
-      - Label:
-          default: CloudFormation Bucket Information
-        Parameters:
-          - BucketRegion
-          - BucketName
-          - KeyPrefix
-          - BucketPartition
-          - BucketUrlSuffix
-    ParameterLabels:
-      BucketUrlSuffix:
-        default: S3 Bucket URL Suffix
-      BucketPartition:
-        default: S3 Bucket Partition
-      BucketName:
-        default: S3 Bucket Name
-      BucketRegion:
-        default: S3 Bucket Region
-      KeyPrefix:
-        default: S3 Key Prefix
-Parameters:
-  BucketUrlSuffix:
-    Type: String
-    Default: amazonaws.com
-    AllowedValues:
-      - amazonaws.com
-      - amazonaws.com.cn
-  BucketPartition:
-    Type: String
-    Default: aws
-    AllowedValues:
-      - aws
-      - aws-cn
-      - aws-us-gov
-  BucketName:
-    Description: SSM Parameter with the S3 bucket name containing the
-      CloudFormation assets.
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /Bootstrap/CloudFormation/S3/Bucket/Name
-  BucketRegion:
-    Description: SSM Parameter with the region for the S3 bucket containing the
-      CloudFormation assets.
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /Bootstrap/CloudFormation/S3/Bucket/Region
-  KeyPrefix:
-    Description: S3 key prefix for the CloudFormation assets. Key prefix
-      can include numbers, lowercase letters, uppercase letters, hyphens (-), 
-      and forward slash (/).
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /Bootstrap/CloudFormation/S3/Bucket/KeyPrefix
 Mappings:
   Keys:
     Bootstrap:
       BucketUrl: /Bootstrap/CloudFormation/S3/Bucket/Url
       BucketArn: /Bootstrap/CloudFormation/S3/Bucket/Arn 
       BucketFullArn: /Bootstrap/CloudFormation/S3/Bucket/FullArn 
+      BucketName: /Bootstrap/CloudFormation/S3/Bucket/Name
+      BucketRegion: /Bootstrap/CloudFormation/S3/Bucket/Region
 Resources:
+  # Create the S3 bucket
+  Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+  
+  ParamBucketName:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The bucket name for the CloudFormation templates
+      Name: !FindInMap [Keys,Bootstrap,BucketName]
+      Value: !Ref Bucket
+      Type: String
+
+  ParamBucketRegion:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The bucket region for the CloudFormation templates
+      Name: !FindInMap [Keys,Bootstrap,BucketRegion]
+      Value: !Ref AWS::Region
+      Type: String
+
   ParamBucketUrl:
     Type: AWS::SSM::Parameter
     Properties:
       Description: The full URL for the CloudFormation templates
       Name: !FindInMap [Keys,Bootstrap,BucketUrl]
-      Value: !Sub 'https://${BucketName}.s3.${BucketRegion}.${BucketUrlSuffix}/${KeyPrefix}'
+      Value: !Sub
+        - 'https://${Arg1}/'
+        - Arg1: !GetAtt Bucket.RegionalDomainName
       Type: String
-  ParamBucketFullArn:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Description: The full arn for the CloudFormation templates (with folder)
-      Name: !FindInMap [Keys,Bootstrap,BucketFullArn]
-      Value: !Sub 'arn:${BucketPartition}:s3:::${BucketName}/${KeyPrefix}'
-      Type: String
+
   ParamBucketArn:
     Type: AWS::SSM::Parameter
     Properties:
-      Description: The arn for the CloudFormation templates (without the folder)
+      Description: The arn for the CloudFormation templates
       Name: !FindInMap [Keys,Bootstrap,BucketArn]
-      Value: !Sub 'arn:${BucketPartition}:s3:::${BucketName}/'
+      Value: !Sub
+        - '${Arg1}/'
+        - Arg1: !GetAtt Bucket.Arn
+      Type: String
+
+  # This parameter is used when subfolders are needed.  Unused at this time.
+  ParamBucketFullArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The arn for the CloudFormation templates
+      Name: !FindInMap [Keys,Bootstrap,BucketFullArn]
+      Value: !GetAtt ParamBucketArn.Value
       Type: String

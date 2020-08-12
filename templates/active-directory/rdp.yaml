@@ -27,8 +27,6 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
   BucketName:
     Type: AWS::SSM::Parameter::Value<String>
-  BucketKeyPrefix:
-    Type: AWS::SSM::Parameter::Value<String>
   BucketRegion:
     Type: AWS::SSM::Parameter::Value<String>
   Vpc:
@@ -54,7 +52,6 @@ Resources:
         PublicSubnet1ID: !Ref PublicSubnet1ID
         PublicSubnet2ID: !Ref PublicSubnet2ID
         QSS3BucketName: !Ref BucketName
-        QSS3KeyPrefix: 
-          !Sub ${BucketKeyPrefix}external/quickstart-microsoft-activedirectory/submodules/quickstart-microsoft-rdgateway/
+        QSS3KeyPrefix: 'external/quickstart-microsoft-activedirectory/submodules/quickstart-microsoft-rdgateway/'
         QSS3BucketRegion: !Ref BucketRegion
         VPCID: !Ref Vpc

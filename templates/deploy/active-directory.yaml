@@ -20,7 +20,6 @@ Metadata:
         Parameters:
           - TargetLocation
           - NetBIOSPrefix
-          - LdapSubdomain
           - InstanceType
           - KeyPairName
           - WINFULLBASE
@@ -30,8 +29,6 @@ Metadata:
         default: Instance Type for AWS Domain Controllers
       WINFULLBASE:
         default: Base Image for AWS Domain Controllers
-      LdapSubdomain:
-        default: Subdomain for LDAP Load Balancer
       NetBIOSPrefix:
         default: AWS Domain Controller NetBIOS Prefix
       TargetLocation:
@@ -107,10 +104,6 @@ Parameters:
     MaxLength: 32
     MinLength: 8
     NoEcho: true
-  LdapSubdomain:
-    Description: The subdomain to be used for the AD LDAP load balancer
-    Type: String
-    Default: ldap
   InstanceType:
     AllowedValues:
       - t2.large
@@ -145,8 +138,6 @@ Parameters:
       /aws/service/ami-windows-latest/Windows_Server-2019-English-Full-Base
 Mappings: 
   Templates: 
-    Certificates:
-      Single: templates/certificates/single.yaml
     Network:
       Subnet: templates/network/subnet.yaml
       NatGatewayRouting: templates/network/nat-gateway-routing.yaml
@@ -224,22 +215,6 @@ Conditions:
     !Equals [AWS, !Ref TargetLocation]
 
 Resources:
-  # Create a certificate to protect the Active Directory ldap subdomain
-  LdapCertificate:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub
-        - ${CfnUrl}${Arg1}
-        - Arg1: !FindInMap [Templates,Certificates,Single]
-      Parameters:
-        Subdomain: !Ref LdapSubdomain
-        ExternalZoneName: !FindInMap [Keys,Foundation,ExternalHostedZoneName]
-        InternalZoneName: !FindInMap [Keys,Foundation,InternalHostedZoneName]
-        xExternalName: !FindInMap [Keys,ActiveDirectory,LDAPExternalName]
-        xInternalName: !FindInMap [Keys,ActiveDirectory,LDAPInternalName]
-        xCertificateArn: !FindInMap [Keys,ActiveDirectory,LDAPCertArn]
-
-
   # This entry establishes the new AD route tables with a default route through
   # the nat gateways.  There will be a route table for each AZ,pointing to the 
   # nat gateway in each AZ.
@@ -513,7 +488,6 @@ Resources:
         TargetIp1: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp1]
         TargetIp2: !FindInMap [Keys,ActiveDirectory,DCPrimaryIp2]
     DependsOn:
-      - LdapCertificate
       - DomainController1
       - DomainController2
 

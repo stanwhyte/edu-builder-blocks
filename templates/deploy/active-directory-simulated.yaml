@@ -17,7 +17,6 @@ Metadata:
           - CfnUrl
           - CfnBucketRegion
           - CfnBucketName
-          - CfnKeyPrefix
       - Label:
           default: Network Configuration
         Parameters:
@@ -83,12 +82,6 @@ Parameters:
       scripts and other components.
     Type: AWS::SSM::Parameter::Value<String>
     Default: /Bootstrap/CloudFormation/S3/Bucket/Name
-  CfnKeyPrefix:
-    Description: The key for the SSM parameter containing the key prefix 
-      of the S3 bucket with all of the CloudFormation templates and supporting
-      scripts and other components.
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /Bootstrap/CloudFormation/S3/Bucket/KeyPrefix
   ADServer1InstanceType:
     AllowedValues:
       - t2.large
@@ -224,7 +217,7 @@ Resources:
         PrivateSubnet2ID: !GetAtt VPCStack.Outputs.PrivateSubnet2AID
         QSS3BucketName: !Ref CfnBucketName
         QSS3BucketRegion: !Ref CfnBucketRegion
-        QSS3KeyPrefix: !Sub '${CfnKeyPrefix}external/quickstart-microsoft-activedirectory/'
+        QSS3KeyPrefix: 'external/quickstart-microsoft-activedirectory/'
         VPCCIDR: !Sub '${VpcCidrPrefix}.0/24'
         VPCID: !GetAtt VPCStack.Outputs.VPCID
   TransitGatewayConnection:

@@ -7,12 +7,6 @@ Parameters:
       https://docs.aws.amazon.com/appstream2/latest/developerguide/active-directory-admin.html#active-directory-permissions
     Type: String
 
-  SoftwareS3BucketName:
-    Description: Globally-unique DNS name for S3 bucket for storing software 
-      to install via Image Builder
-    Type: String
-    AllowedPattern: ^[a-z][a-z0-9\-]+$
-
   CreateAppStreamServiceRoles:
     Description: Various roles are necessary per account to enable AppStream
       to function as required.  These are created automatically when the 
@@ -100,7 +94,6 @@ Resources:
   SoftwareS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Ref SoftwareS3BucketName
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -116,7 +109,7 @@ Resources:
       Description: The SSM Parameter containing the s3 bucket created
         for AppStream software.
       Name: /AppStream/S3/Bucket/Name
-      Value: !Ref SoftwareS3BucketName
+      Value: !Ref SoftwareS3Bucket
       Type: String
 
   # IAM Role for AppStream 2.0 to use for all image builder processes and such

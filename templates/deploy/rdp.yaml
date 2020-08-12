@@ -103,6 +103,5 @@ Resources:
         PublicSubnet1ID: /Foundation/Public/1/EC2/Subnet/Id
         PublicSubnet2ID: /Foundation/Public/2/EC2/Subnet/Id
         BucketName: /Bootstrap/CloudFormation/S3/Bucket/Name
-        BucketKeyPrefix: /Bootstrap/CloudFormation/S3/Bucket/KeyPrefix
         BucketRegion: /Bootstrap/CloudFormation/S3/Bucket/Region
         Vpc: /Foundation/EC2/VPC/Id

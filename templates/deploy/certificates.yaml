@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: 2010-09-09
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Environment Configuration
+        Parameters:
+          - CfnUrl
+      - Label:
+          default: AWS Configuration
+        Parameters:
+          - LdapSubdomain
+    ParameterLabels:
+      LdapSubdomain:
+        default: Subdomain for LDAP Load Balancer
+Parameters:
+  CfnUrl:
+    Description: The key for the SSM parameter containing the full url with
+      of the S3 bucket with all of the CloudFormation templates and supporting
+      scripts and other components.
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /Bootstrap/CloudFormation/S3/Bucket/Url
+  LdapSubdomain:
+    Description: The subdomain to be used for the AD LDAP load balancer. 
+      For example, if ldap.example.com is the desired final domain,
+      only the "ldap" portion would be listed here.
+    Type: String
+    Default: ldap
+    AllowedPattern: '[a-z][a-z0-9\-]*?'
+    MinLength: 1
+    MaxLength: 100
+  SSOSubdomain:
+    Description: The subdomain to be associated with the core shibboleth sso
+      DNS name.  For example, if sso.example.com is the desired final domain,
+      only the "sso" portion would be listed here.
+    Type: String
+    Default: sso
+    AllowedPattern: '[a-z][a-z0-9\-]*?'
+    MinLength: 1
+    MaxLength: 100
+Mappings: 
+  Templates: 
+    Certificates:
+      Single: templates/certificates/single.yaml
+  Keys: 
+    Foundation:
+      ExternalHostedZoneName: /Foundation/External/Route53/HostedZone/Name
+      InternalHostedZoneName: /Foundation/Internal/Route53/HostedZone/Name
+    ActiveDirectory:
+      LDAPExternalName: /ActiveDirectory/LDAP/External/Route53/RecordSet/Name
+      LDAPInternalName: /ActiveDirectory/LDAP/Internal/Route53/RecordSet/Name
+      LDAPCertArn: /ActiveDirectory/LDAP/CertificateManager/Certificate/Arn
+    Shibboleth:
+      SSOExternalName: /Shibboleth/SSO/External/Route53/RecordSet/Name
+      SSOInternalName: /Shibboleth/SSO/Internal/Route53/RecordSet/Name
+      SSOCertArn: /Shibboleth/SSO/CertificateManager/Certificate/Arn
+
+Resources:
+  # Create a certificate to protect the Active Directory ldap subdomain
+  LdapCertificate:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Certificates,Single]
+      Parameters:
+        Subdomain: !Ref LdapSubdomain
+        ExternalZoneName: !FindInMap [Keys,Foundation,ExternalHostedZoneName]
+        InternalZoneName: !FindInMap [Keys,Foundation,InternalHostedZoneName]
+        xExternalName: !FindInMap [Keys,ActiveDirectory,LDAPExternalName]
+        xInternalName: !FindInMap [Keys,ActiveDirectory,LDAPInternalName]
+        xCertificateArn: !FindInMap [Keys,ActiveDirectory,LDAPCertArn]
+
+  # Create a certificate to protect the shibboleth subdomain
+  SSOCertificate:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - ${CfnUrl}${Arg1}
+        - Arg1: !FindInMap [Templates,Certificates,Single]
+      Parameters:
+        Subdomain: !Ref SSOSubdomain
+        ExternalZoneName: !FindInMap [Keys,Foundation,ExternalHostedZoneName]
+        InternalZoneName: !FindInMap [Keys,Foundation,InternalHostedZoneName]
+        xExternalName: !FindInMap [Keys,Shibboleth,SSOExternalName]
+        xInternalName: !FindInMap [Keys,Shibboleth,SSOInternalName]
+        xCertificateArn: !FindInMap [Keys,Shibboleth,SSOCertArn]

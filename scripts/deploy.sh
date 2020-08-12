@@ -26,16 +26,16 @@ source $dir/scripts/_lib.sh
 echo 'Extracting the bucket name from the SSM Parameter store'
 echo '-------------------------------------------------------'
 extract_param bucket /Bootstrap/CloudFormation/S3/Bucket/Name
-extract_param folder /Bootstrap/CloudFormation/S3/Bucket/KeyPrefix
+
 if [ -z "$bucket" ]
 then 
   echo "The bucket wasn't extracted correctly from the SSM parameter store"
   exit 1
 fi 
-echo "Extracted the bucket from the SSM Parameter store $bucket/$folder"
+echo "Extracted the bucket from the SSM Parameter store $bucket"
 
 echo
 echo 'Synchronizing the S3 bucket with the local files (uploading)'
 echo '------------------------------------------------------------'
-aws s3 sync $dir s3://$bucket/$folder --delete --exclude ".*" --exclude "submodules/*"
+aws s3 sync $dir s3://$bucket/ --delete --exclude ".*" --exclude "submodules/*"
 echo "Synchronization complete"

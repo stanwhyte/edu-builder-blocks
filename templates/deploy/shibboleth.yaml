@@ -18,16 +18,6 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<String>
     Default: /Bootstrap/CloudFormation/S3/Bucket/Url
 
-  Subdomain:
-    Description: The subdomain to be associated with the core shibboleth sso
-      DNS name.  For example, if sso.example.com is the desired final domain, 
-      only the "sso" portion would be listed here.
-    Type: String
-    Default: sso
-    AllowedPattern: '[a-z][a-z0-9\-]*?'
-    MinLength: 1
-    MaxLength: 100
-
   LaunchType:
     Type: String
     Default: Fargate
@@ -136,7 +126,6 @@ Mappings:
     Bootstrap:
       BucketName: /Bootstrap/CloudFormation/S3/Bucket/Name
       BucketRegion: /Bootstrap/CloudFormation/S3/Bucket/Region
-      KeyPrefix: /Bootstrap/CloudFormation/S3/Bucket/KeyPrefix
     Foundation:
       ExternalHostedZone: /Foundation/External/Route53/HostedZone/Id
       ExternalZoneName: /Foundation/External/Route53/HostedZone/Name
@@ -152,21 +141,6 @@ Mappings:
       SSOCertArn: /Shibboleth/SSO/CertificateManager/Certificate/Arn
 
 Resources:
-  # Create a certificate to protect the shibboleth subdomain
-  SSOCertificate:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub
-        - ${CfnUrl}${Arg1}
-        - Arg1: !FindInMap [Templates,Certificates,Single]
-      Parameters:
-        Subdomain: !Ref Subdomain
-        ExternalZoneName: !FindInMap [Keys,Foundation,ExternalZoneName]
-        InternalZoneName: !FindInMap [Keys,Foundation,InternalZoneName]
-        xExternalName: !FindInMap [Keys,Shibboleth,SSOExternalName]
-        xInternalName: !FindInMap [Keys,Shibboleth,SSOInternalName]
-        xCertificateArn: !FindInMap [Keys,Shibboleth,SSOCertArn]
-
   # Deploy the actual Shibboleth workload
   Wrap:
     Type: AWS::CloudFormation::Stack
@@ -184,7 +158,6 @@ Resources:
         LDAPReadOnlyUser: !Ref LDAPReadOnlyUser
         LDAPReadOnlyPassword: !Ref LDAPReadOnlyPassword
         BucketName: !FindInMap [Keys,Bootstrap,BucketName]
-        BucketKeyPrefix: !FindInMap [Keys,Bootstrap,KeyPrefix]
         ParentDomain: !FindInMap [Keys,Foundation,InternalZoneName]
         FullyQualifiedDomainName: !FindInMap [Keys,Shibboleth,SSOInternalName]
         CertificateARN: !FindInMap [Keys,Shibboleth,SSOCertArn]
@@ -195,5 +168,3 @@ Resources:
         PrivateSubnet2ID: !FindInMap [Keys,Foundation,NatSubnet2]
         DnsHostedZone: !FindInMap [Keys,Foundation,ExternalHostedZone]
         DnsName: !FindInMap [Keys,Shibboleth,SSOExternalName]
-    DependsOn:
-      - SSOCertificate

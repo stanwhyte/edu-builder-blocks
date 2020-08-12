@@ -7,12 +7,6 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<String>
     Default: /Bootstrap/CloudFormation/S3/Bucket/Url
 
-  SoftwareS3BucketName:
-    Description: Globally-unique DNS name for S3 bucket for storing software 
-      to install via Image Builder
-    Type: String
-    AllowedPattern: ^[a-z][a-z0-9\-]+$
-
   OrganizationalUnitName:
     Description: The full DN of the Organizational Unit where the AppStream
       objects will be stored.  The bind user should have appropriate
@@ -43,7 +37,6 @@ Resources:
         - Arg1: templates/appstream/init.yaml
       Parameters:
         OrganizationalUnitName: !Ref OrganizationalUnitName
-        SoftwareS3BucketName: !Ref SoftwareS3BucketName
         CreateAppStreamServiceRoles: !Ref CreateAppStreamServiceRoles
 
   # The first image builder is to test basic images, with no special graphics

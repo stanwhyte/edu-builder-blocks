@@ -29,8 +29,6 @@ Parameters:
     NoEcho: true
   BucketName:
     Type: AWS::SSM::Parameter::Value<String>
-  BucketKeyPrefix:
-    Type: AWS::SSM::Parameter::Value<String>
   Vpc:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
   PublicSubnet1ID:
@@ -53,7 +51,7 @@ Resources:
       Parameters:
         LaunchType: !Ref LaunchType
         TemplateBucket: !Ref BucketName
-        TemplateFolder: !Sub ${BucketKeyPrefix}external/aws-refarch-shibboleth/
+        TemplateFolder: external/aws-refarch-shibboleth/
         CodeCommitRepoName: !Ref CodeCommitRepoName
         SealerKeyVersionCount: !Ref SealerKeyVersionCount
         ParentDomain: !Ref ParentDomain

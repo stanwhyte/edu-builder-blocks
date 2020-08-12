@@ -72,7 +72,6 @@ Mappings:
     Bootstrap:
       BucketName: /Bootstrap/CloudFormation/S3/Bucket/Name
       BucketRegion: /Bootstrap/CloudFormation/S3/Bucket/Region
-      KeyPrefix: /Bootstrap/CloudFormation/S3/Bucket/KeyPrefix
       BucketUrl: /Bootstrap/CloudFormation/S3/Bucket/Url
       BucketArn: /Bootstrap/CloudFormation/S3/Bucket/Arn
       BucketFullArn: /Bootstrap/CloudFormation/S3/Bucket/FullArn
