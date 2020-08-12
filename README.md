@@ -55,7 +55,7 @@ Deployment
 ----------
 
 Note that for each of the steps below, the step must complete before initiating the subsequent step.  
-1. Use the `./scripts/bootstrap.sh -d /path/to/project -b BUCKET -f ` script to create an S3 bucket (by automatically deploying a CloudFormation template) and modify this README.md file to point to the correct region, s3 bucket name, etc.  This step will also create some SSM Parameters used by subsequent steps.
+1. Use the `./scripts/bootstrap.sh -d /path/to/project` script to create an S3 bucket (by automatically deploying a CloudFormation template) and modify this README.md file to point to the correct region, s3 bucket name, etc.  This step will also create some SSM Parameters used by subsequent steps.
 1. Use the `./scripts/deploy.sh -d /path/to/project` script to synchronize the current project with the S3 bucket.
 1. Deploy the [Foundation](https://REGION.console.aws.amazon.com/cloudformation/home?region=REGION#/stacks/quickcreate?templateUrl=https://BUCKET.s3.amazonaws.com/templates/deploy/foundation.yaml&stackName=foundation) stack and complete manual configuration changes as appropriate:
     * Configure the DNS authoritative name server for the external zone to delegate responsibility to AWS.  This is done by configuring a new NS entry in the authoritative DNS for the same domain you used in the previous step that points to the namespace servers listed in the Public Route53 zone created by the Foundation step.  Instructions may be found in the [AWS documentation](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/MigratingSubdomain.html) or in your DNS server documentation.
