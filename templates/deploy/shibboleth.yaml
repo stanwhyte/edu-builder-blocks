@@ -48,20 +48,20 @@ Parameters:
 
   LDAPUrl:
     Type: String
-    Default: ldaps://ldap-dev.example.com:636
+    Default: ldaps://ldap.demo.EXAMPLE.com:636
     Description: >
       The URL of the LDAP server.
 
   LDAPBaseDN:
     Type: String
-    Default: DC=ad,DC=example,DC=com
+    Default: DC=ad,DC=EXAMPLE,DC=com
     Description: >
       The base DN of the LDAP search base from which user lookup operations will
       be performed.
 
   LDAPReadOnlyUser:
     Type: String
-    Default: readonlyuser@ad.example.com
+    Default: DomainAdmin@ad.EXAMPLE.com
     Description: >
       The username of a read-only user for connecting to the LDAP server.  This
       user should have permissions to search for users and read the attributes
